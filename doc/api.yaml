@@ -1,273 +1,677 @@
-openapi: 3.0.0
-servers:
-  - url: "http://localhost:3000"
+openapi: 3.0.3
 info:
-  title: Fantastic Coffee (decaffeinated)
-  description: Fantastic Coffee (decaffeinated), the skeleton project for Web and Software architecture course
+  title: WASAText
+  description: |-
+    The user is presented with a list of conversations with other users or with groups, sorted in reverse
+    chronological order. Each element in the list must display the username of the other person or the
+    group name, the user profile photo or the group photo, the date and time of the latest message,
+    the preview (snippet) of the text message, or an icon for a photo message. The user can start a new
+    conversation with any other user of WASAText, and this conversation will automatically be added
+    to the list. The user can search for other users via the username and see all the existing WASAText
+    usernames.
+    The user can create a new group with any number of other WASAText users to start a conversation.
+    Group members can add other users to the group, but users cannot join groups on their own or even
+    see groups they aren't a part of. Additionally, users have the option to leave a group at any time.
+    The user can open a conversation to view all exchanged messages, displayed in reverse chronological
+    order. Each message includes the timestamp, the content (whether text or photo), and the sender's
+    username for received messages, or one/two checkmarks to indicate the status of sent messages. Any
+    reactions (comments) on messages are also displayed, along with the names of the users who posted
+    them.
+    One checkmark indicates that the message has been received by the recipient (by all the recipients
+    for groups) in their conversation list. Two checkmarks mean that the message has been read by the
+    recipient (by all the recipients for groups) within the conversation itself.
+    The user can send a new message, reply to an existing one, forward a message, and delete any sent
+    messages. Users can also react to messages (a.k.a. comment them) with an emoticon, and delete their
+    reactions at any time (a.k.a. uncomment).
+    A user can log in simply by entering their username. For more information, refer to the “Simplified
+    Login” section. Users also have the ability to update their name, provided the new name is not already
+    in use by someone else.
   version: 1.0.0
+  contact:
+    name: Simone Lidonnici
+    email: lidonnici.2061343@studenti.uniroma1.it
+    url: https://github.com/SimoneLid/WASAText
+
+tags:
+  - name: "login"
+    description: "endpoint for login"
+  - name: "chat"
+    description: "endpoint for chat operations"
+  - name: "user"
+    description: "endpoint for user operations"
+  - name: "message"
+    description: "endpoint for message operations"
+  - name: "comment"
+    description: "endpoint for commenting messages"
+
 paths:
-  /status:
-    parameters:
-      - $ref: "#/components/parameters/XAppBuild"
-      - $ref: "#/components/parameters/XAppVersion"
-      - $ref: "#/components/parameters/XAppLanguage"
-      - $ref: "#/components/parameters/XAppPlatform"
-    get:
-      tags: ["General"]
-      operationId: getStatusMessage
-      summary: Get status message for the user about issues / updates
+  /session:
+    post:
+      tags: ["login"]
+      summary: Logs in the user
       description: |-
-        The response contains a status message meant for the user. It might
-        contains information about current technical issues, update messages
-        or general information.
+        If the user does not exist, it will be created,
+        and an identifier is returned.
+        If the user exists, the user identifier is returned.
+      operationId: doLogin
+      requestBody:
+        description: User details
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Username"}
+      responses:
+        "201":
+          description: User log-in action successful
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/UserId"}
+        "500": {$ref: "#/components/responses/InternalServerError"}
+        
+
+  /chats:
+    post:
+      security:
+        - bearerAuth: []
+      tags: ["chat"]
+      summary: create a new chat o group
+      description: |-
+        With a list of usernames creates a new chat with these users.
+        If there are more than one username the group is created and the name and the photo 
+        are set as the ones in input.
+      operationId: createChat
+      requestBody:
+        description: |-
+          list of username to create the chat with, and a name and photo (optional).
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ChatCreation"}
+      responses:
+        "201":
+          description: Chat created succesfully
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/GroupId"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "500": {$ref: "#/components/responses/InternalServerError"}
+    get:
+      security:
+        - bearerAuth: []
+      tags: ["chat"]
+      summary: returns all the chat that the user in input is part of
+      description: |-
+        With the user id in input, returns all the chat that the user is part of
+      operationId: getMyConversations
       responses:
         "200":
-          description: Status message available
+          description: Chats returned succesfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StatusInfo"
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "500": { $ref: "#/components/responses/InternalServerError" }
-
-  /:
-    get:
-      tags: ["Group 1"]
-      operationId: index
-      summary: Get an index
-      description: |-
-        This is an example of an index API description
-      responses:
-        "200":
-          description: Successful
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "500": { $ref: "#/components/responses/InternalServerError" }
-  /context:
+                type: object
+                properties:
+                  username: {$ref: "#/components/schemas/Username"}
+                  chatlist:
+                    type: array
+                    minItems: 0
+                    maxItems: 999
+                    items: {$ref: "#/components/schemas/Chat"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "500": {$ref: "#/components/responses/InternalServerError"}
+                  
+      
+  /chats/{chat_id}:
     parameters:
-      - $ref: "#/components/parameters/XAppBuild"
-      - $ref: "#/components/parameters/XAppVersion"
-      - $ref: "#/components/parameters/XAppLanguage"
-      - $ref: "#/components/parameters/XAppPlatform"
-    post:
-      tags: ["Group 1"]
-      operationId: getContext
-      summary: Another API example
-      description: |-
-        Example description 2
-      responses:
-        "200":
-          description: Request ok
-          headers:
-            X-Access-Token:
-              description: Access token for authenticated requests
-              schema: { type: string }
-        "500": { $ref: "#/components/responses/InternalServerError" }
-  /authenticated:
-    parameters:
-      - $ref: "#/components/parameters/XAppBuild"
-      - $ref: "#/components/parameters/XAppVersion"
-      - $ref: "#/components/parameters/XAppLanguage"
-      - $ref: "#/components/parameters/XAppPlatform"
+    - $ref: "#/components/parameters/GroupId"
     get:
-      tags: ["Group 2"]
-      operationId: getAuthenticatedExample
-      summary: Get an endpoint with authentication
-      description: |-
-        Get an endpoint with auth
       security:
-        - LegacyAuth: []
-        - AppToken: []
-      responses:
-        "200":
-          description: Logout successful
-        "500": { $ref: "#/components/responses/InternalServerError" }
-
-  /pictures/{cat}:
-    parameters:
-      - $ref: "#/components/parameters/XAppBuild"
-      - $ref: "#/components/parameters/XAppVersion"
-      - $ref: "#/components/parameters/XAppLanguage"
-      - $ref: "#/components/parameters/XAppPlatform"
-      - $ref: "#/components/parameters/cat"
-    get:
-      tags: ["Cat pictures"]
-      operationId: getCatFromPicture
-      summary: Example of a parameter in URL
+        - bearerAuth: []
+      tags: ["chat"]
+      summary: returns the chat associated with chat_id
       description: |-
-        Example of a parameter in URL
-      security:
-        - LegacyAuth: []
+        returns the chat with all the message in reverse chronological order
+      operationId: getConversation
       responses:
         "200":
-          description: Student picture found
+          description: Chat returned succesfully
           content:
-            image/png:
-              schema:
-                type: string
-                format: binary
-              example: Picture binary file
-        "404":
-          description: Student picture not found
-        "500": { $ref: "#/components/responses/InternalServerError" }
-
-
-  /autofeeder/{cat}:
+            application/json:
+              schema: {$ref: "#/components/schemas/Chat"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/InternalServerError"}
+              
+              
+  /chats/{chat_id}/name:
     parameters:
-      - $ref: "#/components/parameters/XAppBuild"
-      - $ref: "#/components/parameters/XAppVersion"
-      - $ref: "#/components/parameters/XAppLanguage"
-      - $ref: "#/components/parameters/XAppPlatform"
-      - $ref: "#/components/parameters/cat"
+    - $ref: "#/components/parameters/GroupId"
     put:
-      tags: ["Autofeeder"]
-      operationId: createCatAutofeeder
-      summary: Example of PUT operation
       security:
-        - LegacyAuth: []
-      responses:
-        "200":
-          description: Auto feed enabled
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "500": { $ref: "#/components/responses/InternalServerError" }
-    delete:
-      tags: ["Autofeeder"]
-      operationId: deleteCatAutofeeder
-      summary: Example of DELETE operation
-      security:
-        - LegacyAuth: []
-      responses:
-        "200":
-          description: Auto feed disabled
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "500": { $ref: "#/components/responses/InternalServerError" }
-
-  /session/login:
-    parameters:
-      - $ref: "#/components/parameters/XAppBuild"
-      - $ref: "#/components/parameters/XAppVersion"
-      - $ref: "#/components/parameters/XAppLanguage"
-      - $ref: "#/components/parameters/XAppPlatform"
-    post:
-      tags: ["Session management"]
-      operationId: login
-      summary: Log-in into system
+        - bearerAuth: []
+      tags: ["chat"]
+      summary: change the name of the group
       description: |-
-        Perform a log-in action using username and password credentials.
-        Returns a token which can be used in authenticated requests.
+        With a name in input change the chat name.
+        Can't be done in a chat.
+      operationId: setGroupName
       requestBody:
+        description: |-
+          new name of the group
+        required: true
         content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                userid:
-                  type: string
-                  pattern: '^[a-zA-Z0-9]+$'
-                  minLength: 3
-                  maxLength: 255
-                password:
-                  type: string
-                  pattern: '^.*?$'
-                  minLength: 8
-                  maxLength: 255
+          application/json:
+            schema: {$ref: "#/components/schemas/GroupName"}
+      responses:
+        "204":
+          description: Chat name changed succesfully
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/InternalServerError"}
+  
+  
+  /chats/{chat_id}/photo:
+    parameters:
+    - $ref: "#/components/parameters/GroupId"
+    put:
+      security:
+        - bearerAuth: []
+      tags: ["chat"]
+      summary: change the photo of the group
+      description: |-
+        With a photo in input change the chat photo.
+        Can't be done in a chat.
+      operationId: setGroupPhoto
+      requestBody:
+        description: |-
+          new photo of the group
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Photo"}
+      responses:
+        "204":
+          description: Chat photo changed succesfully
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/InternalServerError"}
+      
+      
+  /chats/{chat_id}/users:
+    parameters:
+    - $ref: "#/components/parameters/GroupId"
+    put:
+      security:
+        - bearerAuth: []
+      tags: ["chat"]
+      summary: add users to the group
+      description: |-
+        With a list of username in input, add the users to the group
+      operationId: addToGroup
+      requestBody:
+        description: |-
+          list of username to add
+        required: true
+        content:
+          application/json:
+            schema: 
+              type: array
+              minItems: 1
+              maxItems: 999
+              items: {$ref: "#/components/schemas/Username"}
+      responses:
+        "204":
+          description: Users added succesfully
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/InternalServerError"}
+          
+          
+  /chats/{chat_id}/users/{user_id}:
+    parameters:
+    - $ref: "#/components/parameters/GroupId"
+    - $ref: "#/components/parameters/UserId"
+    delete:
+      security:
+        - bearerAuth: []
+      tags: ["chat"]
+      summary: user leave the group
+      description: |-
+        The user associated to user_id leaves the group associated to chat_id
+      operationId: leaveGroup
+      responses:
+        "204":
+          description: Group left succesfully
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/InternalServerError"}
+    
+      
+  /users/{user_id}/name:
+    parameters:
+    - $ref: "#/components/parameters/UserId"
+    put:
+      security:
+        - bearerAuth: []
+      tags: ["user"]
+      summary: change the name of the user
+      description: |-
+        With a name in input change the username.
+      operationId: setMyUserName
+      requestBody:
+        description: |-
+          new name of the user
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Username"}
+      responses:
+        "204":
+          description: Username changed succesfully
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/InternalServerError"}
+          
+          
+  /users/{user_id}/photo:
+    parameters:
+    - $ref: "#/components/parameters/UserId"
+    put:
+      security:
+        - bearerAuth: []
+      tags: ["user"]
+      summary: change the photo of the user
+      description: |-
+        With a photo in input change the profile photo.
+      operationId: setMyPhoto
+      requestBody:
+        description: |-
+          new photo of the user
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Photo"}
+      responses:
+        "204":
+          description: Profile photo changed succesfully
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/InternalServerError"}
+    
+  /users:
+    parameters:
+    - $ref: "#/components/parameters/SearchUsers"
+    get:
+      tags: ["user"]
+      summary: search user by username
+      description: |-
+        Returns al the users with username starting with the query parameter
+      operationId: searchUsers
       responses:
         "200":
-          description: Login successful
-          headers:
-            X-Access-Token:
-              description: Access token for authenticated requests
-              schema: { type: string }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "403":
-          description: Login failed
-          headers:
-            X-Message:
-              description: Error message
-              schema: { type: string }
-        "500": { $ref: "#/components/responses/InternalServerError" }
-
-
-components:
-  schemas:
-    StatusInfo:
-      title: Status Info
-      type: object
-      properties:
-        status:
-          type: string
-          enum:
-            - info
-            - warning
-            - critical
-            - ""
-        title: { type: string }
-        message: { type: string }
-        url: { type: string }
-
-  responses:
-    Unauthorized:
-      description: The access token is missing or it's expired
-    BadRequest:
-      description: The request was not compliant with the documentation (eg. missing fields, etc)
-    InternalServerError:
-      description: The server encountered an internal error. Further info in server logs
-
-  securitySchemes:
-    LegacyAuth:
-      type: apiKey
-      in: header
-      name: X-App-Token
+          description: Searched users returned succesfully
+          content:
+            application/json:
+              schema: 
+                type: array
+                minItems: 0
+                maxItems: 999
+                items: {$ref: "#/components/schemas/Username"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/InternalServerError"}
+    
+  /chats/{chat_id}/messages:
+    parameters:
+    - $ref: "#/components/parameters/GroupId"
+    post:
+      security:
+        - bearerAuth: []
+      tags: ["message"]
+      summary: send a message in the chat
       description: |-
-        App session token value. This value is sent by the server in the login
-        and session refresh APIs.
-
+        The user performing the action send a message in the chat
+        associated with chat_id
+      operationId: sendMessage
+      requestBody:
+        description: |-
+          message to send
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Message"}
+      responses:
+        "201":
+          description: Message send succesfully
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MessageId"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/InternalServerError"}
+    
+    
+  /chats/{chat_id}/forwardedmessages:
+    parameters:
+    - $ref: "#/components/parameters/GroupId"
+    post:
+      security:
+        - bearerAuth: []
+      tags: ["message"]
+      summary: forward a message in the chat
+      description: |-
+        The user performing the action forward a message in the chat
+        associated with chat_id
+      operationId: forwardMessage
+      requestBody:
+        description: |-
+          message to forward
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Message"}
+      responses:
+        "201":
+          description: Message forwarded succesfully
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MessageId"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/InternalServerError"}
+    
+    
+  /chats/{chat_id}/messages/{message_id}:
+    parameters:
+    - $ref: "#/components/parameters/GroupId"
+    - $ref: "#/components/parameters/MessageId"
+    delete:
+      security:
+        - bearerAuth: []
+      tags: ["message"]
+      summary: delete a message in the chat
+      description: |-
+        The user performing the action delete the message associated to message_id 
+        in the chat associated with chat_id
+      operationId: deleteMessage
+      responses:
+        "204":
+          description: Message deleted successfully
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/InternalServerError"}
+  
+  
+  /chats/{chat_id}/messages/{message_id}/comments:
+    parameters:
+    - $ref: "#/components/parameters/GroupId"
+    - $ref: "#/components/parameters/MessageId"
+    post:
+      security:
+        - bearerAuth: []
+      tags: ["comment"]
+      summary: comment a message
+      description: |-
+        The user performing the action comments the message associated to
+        message_id with the text in input
+      operationId: commentMessage
+      requestBody:
+        description: |-
+          comment to add to the message
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Comment"}
+      responses:
+        "201":
+          description: Message commented succesfully
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/CommentId"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/InternalServerError"}
+  
+  
+  /chats/{chat_id}/messages/{message_id}/comments/{comment_id}:
+    parameters:
+    - $ref: "#/components/parameters/GroupId"
+    - $ref: "#/components/parameters/MessageId"
+    - $ref: "#/components/parameters/CommentId"
+    delete:
+      security:
+        - bearerAuth: []
+      tags: ["comment"]
+      summary: delete comment to a message
+      description: |-
+        The user performing the action delete the comment associated to comment_id 
+        of the message associated with message_id
+      operationId: uncommentMessage
+      responses:
+        "204":
+          description: Comment deleted successfully
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/InternalServerError"}
+    
+    
+    
+    
+    
+components:
   parameters:
-    XAppVersion:
-      schema:
-        type: string
-        pattern: '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
-        minLength: 1
-        maxLength: 10
-      name: X-App-Version
-      in: header
-      required: true
-      description: App human readable version ("semantic version" format)
-      allowEmptyValue: false
-    XAppBuild:
-      schema: { type: integer }
-      name: X-App-Build
-      in: header
-      required: true
-      description: App build number
-      allowEmptyValue: false
-    XAppLanguage:
-      schema:
-        type: string
-        pattern: '^[a-z]{2}([-_][A-Z]{2})?$'
-        minLength: 2
-        maxLength: 5
-      name: X-App-Language
-      in: header
-      required: true
-      description: App language in ISO 639-1 format
-      allowEmptyValue: false
-    XAppPlatform:
-      schema:
-        type: string
-        enum: [ios, android]
-      name: X-App-Platform
-      in: header
-      required: true
-      description: App operating system / platform
-      allowEmptyValue: false
-    cat:
-      schema:
-        type: string
-        pattern: '^[a-zA-Z]+$'
-        minLength: 3
-        maxLength: 10
-      name: cat
+    GroupId:
+      name: chat_id
       in: path
       required: true
-      description: Cat
-      allowEmptyValue: false
+      description: Chat ID
+      schema:
+        type: integer
+        example: 1
+        readOnly: true
+        
+    UserId:
+      name: user_id
+      in: path
+      required: true
+      description: User ID
+      schema:
+        type: integer
+        example: 1
+        readOnly: true
+        
+    MessageId:
+      name: message_id
+      in: path
+      required: true
+      description: Message ID
+      schema:
+        type: integer
+        example: 1
+        readOnly: true
+    
+    CommentId:
+      name: comment_id
+      in: path
+      required: true
+      description: Comment ID
+      schema:
+        type: integer
+        example: 1
+        readOnly: true
+        
+    SearchUsers:
+      name: search_users
+      in: query
+      required: true
+      description: username to search
+      schema: {$ref: "#/components/schemas/Username"}
+      
+      
+      
+  schemas:
+    Username:
+      title: username
+      description: user username
+      type: string
+      example: Maria
+      pattern: 'ˆ.*?$'
+      minLength: 3
+      maxLength: 16
+    
+    GroupName:
+      title: groupname
+      description: group name
+      type: string
+      example: GruppoProva
+      pattern: 'ˆ.*?$'
+      minLength: 3
+      maxLength: 16
+    
+    Photo:
+      title: photo
+      description: byte data of the photo
+      type: string
+      format: byte
+      example: "data:image/jpg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/AAAAAAAAAAAAAQIDAAQF/"
+      pattern: '^.*$'
+      minLength: 1
+      maxLength: 999
+      
+    UserId:
+      title: userid
+      description: user id
+      type: integer
+      example: 35
+      
+    GroupId:
+      title: groupid
+      description: group id
+      type: integer
+      example: 12
+      
+    MessageId:
+      title: messageid
+      description: message id
+      type: integer
+      example: 33
+      
+    CommentId:
+      title: commentid
+      description: comment id
+      type: integer
+      example: 24
+    
+    DateTime:
+      title: datetime
+      description: string representing a date time
+      type: string
+      format: date-time
+      example: "2004-01-24T23:28:28Z"
+      pattern: "^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2}(?:\\.\\d*)?)((-(\\d{2}):(\\d{2})|Z)?)$"
+      minLength: 20
+      maxLength: 30
+      
+    TextData:
+      title: textdata
+      description: Data of a text or a photo message
+      type: string
+      example: "Ciao"
+      pattern: '^(.|\n)*$'
+      minLength: 1
+      maxLength: 999
+    
+    ChatCreation:
+      title: chatcreation
+      description: info to create a new chat
+      type: object
+      properties:
+        usernameList:
+          description: list of the username to create the chat with
+          type: array
+          minItems: 1
+          maxItems: 999
+          items: {$ref: "#/components/schemas/Username"}
+        groupName: {$ref: "#/components/schemas/GroupName"}
+        groupPhoto: {$ref: "#/components/schemas/Photo"}
+        firstMessage: {$ref: "#/components/schemas/Message"}
+    
+    Chat:
+      title: chat
+      description: info of a chat
+      type: object
+      properties:
+        groupId: {$ref: "#/components/schemas/GroupId"}
+        groupName: {$ref: "#/components/schemas/GroupName"}
+        groupPhoto: {$ref: "#/components/schemas/Photo"}
+        isGroup:
+          description: boolean to determine if the chat is a group
+          type: boolean
+          example: false
+        messageList:
+          description: list of message of the chat
+          type: array
+          minItems: 0
+          maxItems: 999
+          items: {$ref: "#/components/schemas/Message"}
+        
+                 
+    Message:
+      title: message
+      description: info of a message
+      type: object
+      properties:
+        messageId: {$ref: "#/components/schemas/MessageId"}
+        userId: {$ref: "#/components/schemas/UserId"}
+        groupId: {$ref: "#/components/schemas/GroupId"}
+        dateTime: {$ref: "#/components/schemas/DateTime"}
+        isPhoto:
+          description: boolean to determine if the message is a text or a photo
+          type: boolean
+          example: true
+        isForwarded:
+          description: boolean to determine if the message was forwarded
+          type: boolean
+          example: false
+        text: {$ref: "#/components/schemas/TextData"}
+        photo: {$ref: "#/components/schemas/Photo"}
+          
+          
+          
+    Comment:
+      title: comment
+      description: info of a comment
+      type: object
+      properties:
+        commentId: {$ref: "#/components/schemas/CommentId"}
+        messageId: {$ref: "#/components/schemas/MessageId"}
+        userId: {$ref: "#/components/schemas/UserId"}
+        dateTime: {$ref: "#/components/schemas/DateTime"}
+        text: {$ref: "#/components/schemas/TextData"}
+      
+      
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      
+      
+  responses:
+    BadRequest:
+      description: The request was not compliant with the documentation (eg. missing fields, etc).
+    Unauthorized:
+      description: Access token is missing or invalid.
+    NotFound:
+      description: The server cannot find the requested resource.
+    InternalServerError:
+      description: The server encounted an internal error. Further info in server logs.
