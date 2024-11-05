@@ -59,7 +59,10 @@ paths:
         required: true
         content:
           application/json:
-            schema: {$ref: "#/components/schemas/Username"}
+            schema:
+              type: object
+              properties:
+                username: {$ref: "#/components/schemas/Username"}
       responses:
         "201":
           description: User log-in action successful
@@ -109,6 +112,7 @@ paths:
           content:
             application/json:
               schema:
+                description: chats of an user
                 type: object
                 properties:
                   username: {$ref: "#/components/schemas/Username"}
@@ -161,7 +165,10 @@ paths:
         required: true
         content:
           application/json:
-            schema: {$ref: "#/components/schemas/GroupName"}
+            schema:
+              type: object
+              properties:
+                name: {$ref: "#/components/schemas/GroupName"}
       responses:
         "204":
           description: Chat name changed succesfully
@@ -189,7 +196,10 @@ paths:
         required: true
         content:
           application/json:
-            schema: {$ref: "#/components/schemas/Photo"}
+            schema: 
+              type: object
+              properties:
+                photo: {$ref: "#/components/schemas/Photo"}
       responses:
         "204":
           description: Chat photo changed succesfully
@@ -217,10 +227,9 @@ paths:
         content:
           application/json:
             schema: 
-              type: array
-              minItems: 1
-              maxItems: 999
-              items: {$ref: "#/components/schemas/Username"}
+              type: object
+              properties:
+                usernamelist: {$ref: "#/components/schemas/UsernameList"}
       responses:
         "204":
           description: Users added succesfully
@@ -268,7 +277,10 @@ paths:
         required: true
         content:
           application/json:
-            schema: {$ref: "#/components/schemas/Username"}
+            schema:
+              type: object
+              properties:
+                name: {$ref: "#/components/schemas/Username"}
       responses:
         "204":
           description: Username changed succesfully
@@ -295,7 +307,10 @@ paths:
         required: true
         content:
           application/json:
-            schema: {$ref: "#/components/schemas/Photo"}
+            schema: 
+              type: object
+              properties:
+                photo: {$ref: "#/components/schemas/Photo"}
       responses:
         "204":
           description: Profile photo changed succesfully
@@ -318,11 +333,7 @@ paths:
           description: Searched users returned succesfully
           content:
             application/json:
-              schema: 
-                type: array
-                minItems: 0
-                maxItems: 999
-                items: {$ref: "#/components/schemas/Username"}
+              schema: {$ref: "#/components/schemas/UsernameList"}
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "404": {$ref: "#/components/responses/NotFound"}
@@ -346,7 +357,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: {$ref: "#/components/schemas/Message"}
+            schema: {$ref: "#/components/schemas/MessageToSend"}
       responses:
         "201":
           description: Message send succesfully
@@ -377,7 +388,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: {$ref: "#/components/schemas/Message"}
+            schema: {$ref: "#/components/schemas/MessageToSend"}
       responses:
         "201":
           description: Message forwarded succesfully
@@ -430,7 +441,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: {$ref: "#/components/schemas/Comment"}
+            schema: {$ref: "#/components/schemas/CommentToAdd"}
       responses:
         "201":
           description: Message commented succesfully
@@ -515,7 +526,12 @@ components:
       in: query
       required: true
       description: username to search
-      schema: {$ref: "#/components/schemas/Username"}
+      schema:
+        type: string
+        example: Simone
+        pattern: 'ˆ.*?$'
+        minLength: 1
+        maxLength: 16
       
       
       
@@ -529,6 +545,14 @@ components:
       minLength: 3
       maxLength: 16
     
+    UsernameList:
+      title: usernamelist
+      description: list of usernames
+      type: array
+      minItems: 1
+      maxItems: 999
+      items: {$ref: "#/components/schemas/Username"}
+
     GroupName:
       title: groupname
       description: group name
@@ -596,15 +620,10 @@ components:
       description: info to create a new chat
       type: object
       properties:
-        usernameList:
-          description: list of the username to create the chat with
-          type: array
-          minItems: 1
-          maxItems: 999
-          items: {$ref: "#/components/schemas/Username"}
+        usernameList: {$ref: "#/components/schemas/UsernameList"}
         groupName: {$ref: "#/components/schemas/GroupName"}
         groupPhoto: {$ref: "#/components/schemas/Photo"}
-        firstMessage: {$ref: "#/components/schemas/Message"}
+        firstMessage: {$ref: "#/components/schemas/MessageToSend"}
     
     Chat:
       title: chat
@@ -626,6 +645,22 @@ components:
           items: {$ref: "#/components/schemas/Message"}
         
                  
+    MessageToSend:
+      title: messagetosend
+      description: info to create a new message
+      type: object
+      properties:
+        isPhoto:
+          description: boolean to determine if the message is a text or a photo
+          type: boolean
+          example: true
+        isForwarded:
+          description: boolean to determine if the message was forwarded
+          type: boolean
+          example: false
+        text: {$ref: "#/components/schemas/TextData"}
+        photo: {$ref: "#/components/schemas/Photo"}
+
     Message:
       title: message
       description: info of a message
@@ -645,8 +680,19 @@ components:
           example: false
         text: {$ref: "#/components/schemas/TextData"}
         photo: {$ref: "#/components/schemas/Photo"}
+        commentlist:
+          description: list of comment of the message
+          type: array
+          minItems: 0
+          maxItems: 999
+          items: {$ref: "#/components/schemas/Comment"}
           
-          
+    CommentToAdd:
+      title: commenttoadd
+      description: info to add a new comment
+      type: object
+      properties:
+        text: {$ref: "#/components/schemas/TextData"}
           
     Comment:
       title: comment
