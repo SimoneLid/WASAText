@@ -95,7 +95,7 @@ paths:
           description: Chat created succesfully
           content:
             application/json:
-              schema: {$ref: "#/components/schemas/GroupId"}
+              schema: {$ref: "#/components/schemas/Chat"}
         "400": {$ref: "#/components/responses/BadRequest"}
         "500": {$ref: "#/components/responses/InternalServerError"}
     get:
@@ -117,6 +117,7 @@ paths:
                 properties:
                   username: {$ref: "#/components/schemas/Username"}
                   chatlist:
+                    description: array of chats
                     type: array
                     minItems: 0
                     maxItems: 999
@@ -156,7 +157,7 @@ paths:
       tags: ["chat"]
       summary: change the name of the group
       description: |-
-        With a name in input change the chat name.
+        With a name in input change the group name.
         Can't be done in a chat.
       operationId: setGroupName
       requestBody:
@@ -166,6 +167,7 @@ paths:
         content:
           application/json:
             schema:
+              description: new name of the group
               type: object
               properties:
                 name: {$ref: "#/components/schemas/GroupName"}
@@ -187,7 +189,7 @@ paths:
       tags: ["chat"]
       summary: change the photo of the group
       description: |-
-        With a photo in input change the chat photo.
+        With a photo in input change the group photo.
         Can't be done in a chat.
       operationId: setGroupPhoto
       requestBody:
@@ -197,6 +199,7 @@ paths:
         content:
           application/json:
             schema: 
+              description: new photo of the group
               type: object
               properties:
                 photo: {$ref: "#/components/schemas/Photo"}
@@ -227,6 +230,7 @@ paths:
         content:
           application/json:
             schema: 
+              description: list of username to add
               type: object
               properties:
                 usernamelist: {$ref: "#/components/schemas/UsernameList"}
@@ -278,6 +282,7 @@ paths:
         content:
           application/json:
             schema:
+              description: new name of the user
               type: object
               properties:
                 name: {$ref: "#/components/schemas/Username"}
@@ -308,6 +313,7 @@ paths:
         content:
           application/json:
             schema: 
+              description: new photo of the user
               type: object
               properties:
                 photo: {$ref: "#/components/schemas/Photo"}
@@ -388,7 +394,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: {$ref: "#/components/schemas/MessageToSend"}
+            schema: {$ref: "#/components/schemas/MessageId"}
       responses:
         "201":
           description: Message forwarded succesfully
@@ -541,7 +547,7 @@ components:
       description: user username
       type: string
       example: Maria
-      pattern: 'ˆ.*?$'
+      pattern: '.*$'
       minLength: 3
       maxLength: 16
     
@@ -558,7 +564,7 @@ components:
       description: group name
       type: string
       example: GruppoProva
-      pattern: 'ˆ.*?$'
+      pattern: '.*$'
       minLength: 3
       maxLength: 16
     
@@ -566,9 +572,8 @@ components:
       title: photo
       description: byte data of the photo
       type: string
-      format: byte
       example: "data:image/jpg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/AAAAAAAAAAAAAQIDAAQF/"
-      pattern: '^.*$'
+      pattern: '.*'
       minLength: 1
       maxLength: 999
       
@@ -624,7 +629,7 @@ components:
         groupName: {$ref: "#/components/schemas/GroupName"}
         groupPhoto: {$ref: "#/components/schemas/Photo"}
         firstMessage: {$ref: "#/components/schemas/MessageToSend"}
-    
+
     Chat:
       title: chat
       description: info of a chat
@@ -640,7 +645,7 @@ components:
         messageList:
           description: list of message of the chat
           type: array
-          minItems: 0
+          minItems: 1
           maxItems: 999
           items: {$ref: "#/components/schemas/Message"}
         
@@ -680,7 +685,7 @@ components:
           example: false
         text: {$ref: "#/components/schemas/TextData"}
         photo: {$ref: "#/components/schemas/Photo"}
-        commentlist:
+        commentList:
           description: list of comment of the message
           type: array
           minItems: 0
