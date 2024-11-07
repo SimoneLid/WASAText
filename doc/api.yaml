@@ -95,7 +95,12 @@ paths:
           description: Chat created succesfully
           content:
             application/json:
-              schema: {$ref: "#/components/schemas/Chat"}
+              schema:
+                description: new chat and message ids
+                type: object
+                properties:
+                  chatId: {$ref: "#/components/schemas/ChatId"}
+                  messageId: {$ref: "#/components/schemas/MessageId"}
         "400": {$ref: "#/components/responses/BadRequest"}
         "500": {$ref: "#/components/responses/InternalServerError"}
     get:
@@ -115,8 +120,7 @@ paths:
                 description: chats of an user
                 type: object
                 properties:
-                  username: {$ref: "#/components/schemas/Username"}
-                  chatlist:
+                  chatList:
                     description: array of chats
                     type: array
                     minItems: 0
@@ -128,7 +132,7 @@ paths:
       
   /chats/{chat_id}:
     parameters:
-    - $ref: "#/components/parameters/GroupId"
+    - $ref: "#/components/parameters/ChatId"
     get:
       security:
         - bearerAuth: []
@@ -150,7 +154,7 @@ paths:
               
   /chats/{chat_id}/name:
     parameters:
-    - $ref: "#/components/parameters/GroupId"
+    - $ref: "#/components/parameters/ChatId"
     put:
       security:
         - bearerAuth: []
@@ -182,7 +186,7 @@ paths:
   
   /chats/{chat_id}/photo:
     parameters:
-    - $ref: "#/components/parameters/GroupId"
+    - $ref: "#/components/parameters/ChatId"
     put:
       security:
         - bearerAuth: []
@@ -214,7 +218,7 @@ paths:
       
   /chats/{chat_id}/users:
     parameters:
-    - $ref: "#/components/parameters/GroupId"
+    - $ref: "#/components/parameters/ChatId"
     put:
       security:
         - bearerAuth: []
@@ -229,11 +233,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: 
-              description: list of username to add
-              type: object
-              properties:
-                usernamelist: {$ref: "#/components/schemas/UsernameList"}
+            schema: {$ref: "#/components/schemas/UsernameList"}
       responses:
         "204":
           description: Users added succesfully
@@ -245,7 +245,7 @@ paths:
           
   /chats/{chat_id}/users/{user_id}:
     parameters:
-    - $ref: "#/components/parameters/GroupId"
+    - $ref: "#/components/parameters/ChatId"
     - $ref: "#/components/parameters/UserId"
     delete:
       security:
@@ -347,7 +347,7 @@ paths:
     
   /chats/{chat_id}/messages:
     parameters:
-    - $ref: "#/components/parameters/GroupId"
+    - $ref: "#/components/parameters/ChatId"
     post:
       security:
         - bearerAuth: []
@@ -378,7 +378,7 @@ paths:
     
   /chats/{chat_id}/forwardedmessages:
     parameters:
-    - $ref: "#/components/parameters/GroupId"
+    - $ref: "#/components/parameters/ChatId"
     post:
       security:
         - bearerAuth: []
@@ -409,7 +409,7 @@ paths:
     
   /chats/{chat_id}/messages/{message_id}:
     parameters:
-    - $ref: "#/components/parameters/GroupId"
+    - $ref: "#/components/parameters/ChatId"
     - $ref: "#/components/parameters/MessageId"
     delete:
       security:
@@ -430,16 +430,16 @@ paths:
   
   /chats/{chat_id}/messages/{message_id}/comments:
     parameters:
-    - $ref: "#/components/parameters/GroupId"
+    - $ref: "#/components/parameters/ChatId"
     - $ref: "#/components/parameters/MessageId"
-    post:
+    put:
       security:
         - bearerAuth: []
       tags: ["comment"]
       summary: comment a message
       description: |-
         The user performing the action comments the message associated to
-        message_id with the text in input
+        message_id with the emoji in input
       operationId: commentMessage
       requestBody:
         description: |-
@@ -447,13 +447,13 @@ paths:
         required: true
         content:
           application/json:
-            schema: {$ref: "#/components/schemas/CommentToAdd"}
+            schema:
+              description: emoji to add as comment to the message
+              properties:
+                emoji: {$ref: "#/components/schemas/Emoji"}
       responses:
-        "201":
+        "204":
           description: Message commented succesfully
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/CommentId"}
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "404": {$ref: "#/components/responses/NotFound"}
@@ -462,7 +462,7 @@ paths:
   
   /chats/{chat_id}/messages/{message_id}/comments/{comment_id}:
     parameters:
-    - $ref: "#/components/parameters/GroupId"
+    - $ref: "#/components/parameters/ChatId"
     - $ref: "#/components/parameters/MessageId"
     - $ref: "#/components/parameters/CommentId"
     delete:
@@ -487,7 +487,7 @@ paths:
     
 components:
   parameters:
-    GroupId:
+    ChatId:
       name: chat_id
       in: path
       required: true
@@ -535,7 +535,7 @@ components:
       schema:
         type: string
         example: Simone
-        pattern: 'ˆ.*?$'
+        pattern: '.*'
         minLength: 1
         maxLength: 16
       
@@ -583,9 +583,9 @@ components:
       type: integer
       example: 35
       
-    GroupId:
-      title: groupid
-      description: group id
+    ChatId:
+      title: chatid
+      description: chat id
       type: integer
       example: 12
       
@@ -595,11 +595,6 @@ components:
       type: integer
       example: 33
       
-    CommentId:
-      title: commentid
-      description: comment id
-      type: integer
-      example: 24
     
     DateTime:
       title: datetime
@@ -620,6 +615,15 @@ components:
       minLength: 1
       maxLength: 999
     
+    Emoji:
+      title: emoji
+      description: Emoji comment
+      type: string
+      example: "😊"
+      pattern: ".*"
+      minLength: 1
+      maxLength: 1
+    
     ChatCreation:
       title: chatcreation
       description: info to create a new chat
@@ -635,7 +639,7 @@ components:
       description: info of a chat
       type: object
       properties:
-        groupId: {$ref: "#/components/schemas/GroupId"}
+        chatId: {$ref: "#/components/schemas/ChatId"}
         groupName: {$ref: "#/components/schemas/GroupName"}
         groupPhoto: {$ref: "#/components/schemas/Photo"}
         isGroup:
@@ -673,7 +677,7 @@ components:
       properties:
         messageId: {$ref: "#/components/schemas/MessageId"}
         userId: {$ref: "#/components/schemas/UserId"}
-        groupId: {$ref: "#/components/schemas/GroupId"}
+        chatId: {$ref: "#/components/schemas/ChatId"}
         dateTime: {$ref: "#/components/schemas/DateTime"}
         isPhoto:
           description: boolean to determine if the message is a text or a photo
@@ -692,23 +696,15 @@ components:
           maxItems: 999
           items: {$ref: "#/components/schemas/Comment"}
           
-    CommentToAdd:
-      title: commenttoadd
-      description: info to add a new comment
-      type: object
-      properties:
-        text: {$ref: "#/components/schemas/TextData"}
           
     Comment:
       title: comment
       description: info of a comment
       type: object
       properties:
-        commentId: {$ref: "#/components/schemas/CommentId"}
         messageId: {$ref: "#/components/schemas/MessageId"}
         userId: {$ref: "#/components/schemas/UserId"}
-        dateTime: {$ref: "#/components/schemas/DateTime"}
-        text: {$ref: "#/components/schemas/TextData"}
+        text: {$ref: "#/components/schemas/Emoji"}
       
       
   securitySchemes:
