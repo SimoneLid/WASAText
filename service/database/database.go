@@ -59,7 +59,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 				UserId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 				Username TEXT NOT NULL UNIQUE,
 				Photo TEXT NOT NULL,
-				LastAccess DATETIME NOT NULL
+				LastAccess DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 				);`
 
 
@@ -111,8 +111,6 @@ func New(db *sql.DB) (AppDatabase, error) {
 					);`
 
 
-
-
 	_, err := db.Exec(User)
 	if err != nil {
 			return nil, fmt.Errorf("error creating database structure: %w", err)
@@ -152,8 +150,8 @@ func New(db *sql.DB) (AppDatabase, error) {
 	/* Decommenta per testare
 	_, err = db.Exec(`
 		INSERT INTO User (Username, Photo, LastAccess) VALUES ('alice', 'alice_photo.jpg', '2024-11-01 08:30:00');
-		INSERT INTO User (Username, Photo, LastAccess) VALUES ('bob', 'bob_photo.jpg', '2024-11-02 09:15:00');
-		INSERT INTO User (Username, Photo, LastAccess) VALUES ('carol', 'carol_photo.jpg', '2024-11-03 10:00:00');
+		INSERT INTO User (Username, Photo) VALUES ('bob', 'bob_photo.jpg');
+		INSERT INTO User (Username, Photo) VALUES ('carol', 'carol_photo.jpg');
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("error inserting into User: %w", err)
