@@ -34,12 +34,19 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
+	"git.sapienzaapps.it/fantasticcoffee/fantastic-coffee-decaffeinated/service/api/components"
 )
 
 // AppDatabase is the high level interface for the DB
 type AppDatabase interface {
-	GetName() (string, error)
-	SetName(name string) error
+	// User
+	InsertUser(username string ) (int, error)
+	GetIdFromUsername(username string) (int, error)
+
+	// Chat
+	InsertChat(chat components.ChatCreation) (int, error)
+	AddUsersToGroup(usernamelist []string, chatid int) error
 
 	Ping() error
 }
@@ -59,13 +66,14 @@ func New(db *sql.DB) (AppDatabase, error) {
 				UserId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 				Username TEXT NOT NULL UNIQUE,
 				Photo TEXT NOT NULL,
-				LastAccess DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+				LastAccess DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				CHECK(LENGTH(Username)>=3 AND LENGTH(Username)<=16)
 				);`
 
 
 	Chat := `CREATE TABLE IF NOT EXISTS Chat(
 				ChatId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-				ChatName TEXT UNIQUE,
+				ChatName TEXT,
 				ChatPhoto TEXT,
 				IsGroup BOOLEAN NOT NULL,
 				CHECK ((IsGroup = 0 AND ChatName IS NULL AND ChatPhoto IS NULL) OR 
@@ -102,7 +110,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 	ChatUser := `CREATE TABLE IF NOT EXISTS ChatUser(
 					UserId INTEGER NOT NULL,
 					ChatId INTEGER NOT NULL,
-					TimeAdded DATETIME NOT NULL,
+					TimeAdded DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 					LastRead DATETIME,
 					PRIMARY KEY(UserId,ChatId),
 					CHECK((LastRead>TimeAdded) OR (LastRead IS NULL)),

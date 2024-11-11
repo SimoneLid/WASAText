@@ -1,0 +1,38 @@
+package api
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"git.sapienzaapps.it/fantasticcoffee/fantastic-coffee-decaffeinated/service/api/components"
+	"git.sapienzaapps.it/fantasticcoffee/fantastic-coffee-decaffeinated/service/api/reqcontext"
+	"github.com/julienschmidt/httprouter"
+)
+
+// post /session
+func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
+	
+	// Take the username from the request body
+	var username components.Username
+	err := json.NewDecoder(r.Body).Decode(&username)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	// Insert the user in the database
+	var id int
+	id, err = rt.db.InsertUser(username.Username)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return 
+	}
+	
+	var userid components.UserId
+	userid.UserId = id
+
+	// set the header of the response
+	w.Header().Set("Content-Type","application/json")
+	w.WriteHeader(http.StatusCreated) // 201
+	_ = json.NewEncoder(w).Encode(userid)
+}
