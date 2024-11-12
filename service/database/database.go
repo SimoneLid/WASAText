@@ -43,9 +43,10 @@ type AppDatabase interface {
 	// User
 	InsertUser(username string ) (int, error)
 	GetIdFromUsername(username string) (int, error)
+	GetUsernameFromId(userid int) (string, error)
 
 	// Chat
-	InsertChat(chat components.ChatCreation) (int, error)
+	InsertChat(chat components.ChatCreation, userperformingid int) (int, int, error)
 	AddUsersToGroup(usernamelist []string, chatid int) error
 
 	Ping() error
@@ -75,9 +76,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 				ChatId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 				ChatName TEXT,
 				ChatPhoto TEXT,
-				IsGroup BOOLEAN NOT NULL,
-				CHECK ((IsGroup = 0 AND ChatName IS NULL AND ChatPhoto IS NULL) OR 
-    			(IsGroup = 1 AND ChatName IS NOT NULL AND ChatPhoto IS NOT NULL))
+				CHECK ((ChatName IS NULL AND ChatPhoto IS NULL) OR (ChatName IS NOT NULL AND ChatPhoto IS NOT NULL))
 				);`
 
 
@@ -87,11 +86,9 @@ func New(db *sql.DB) (AppDatabase, error) {
 					UserId INTEGER NOT NULL,
 					Text TEXT,
 					Photo TEXT,
-					IsPhoto BOOLEAN NOT NULL,
 					IsForwarded BOOLEAN NOT NULL,
-					TimeStamp DATETIME NOT NULL,
-					CHECK ((IsPhoto = 0 AND Photo IS NULL AND Text IS NOT NULL) OR 
-    				(IsPhoto = 1 AND Photo IS NOT NULL)),
+					TimeStamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					CHECK (Text IS NOT NULL OR Photo IS NOT NULL),
 					FOREIGN KEY(ChatId) REFERENCES Chat(ChatId),
 					FOREIGN KEY(UserId) REFERENCES User(UserId)
 					);`
@@ -155,16 +152,16 @@ func New(db *sql.DB) (AppDatabase, error) {
 
 	// Inizio test
 
-	/* Decommenta per testare
+	// Decommenta per testare
 	_, err = db.Exec(`
-		INSERT INTO User (Username, Photo, LastAccess) VALUES ('alice', 'alice_photo.jpg', '2024-11-01 08:30:00');
-		INSERT INTO User (Username, Photo) VALUES ('bob', 'bob_photo.jpg');
-		INSERT INTO User (Username, Photo) VALUES ('carol', 'carol_photo.jpg');
+		INSERT OR IGNORE INTO User (Username, Photo, LastAccess) VALUES ('Sim', 'sim_photo.jpg', '2024-11-01 08:30:00');
+		INSERT OR IGNORE INTO User (Username, Photo) VALUES ('Ivan','photo.png');
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("error inserting into User: %w", err)
 	}
 
+	/*
 	// Inserimenti per la tabella Chat
 	_, err = db.Exec(`
 		INSERT INTO Chat (ChatName, ChatPhoto, IsGroup) VALUES (NULL, NULL, 0);

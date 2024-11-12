@@ -28,7 +28,6 @@ type ChatCreation struct{
 }
 
 type MessageToSend struct{
-	IsPhoto bool `json:"isphoto"`
 	IsForwarded bool `json:"isforwarded"`
 	Text string `json:"text"`
 	Photo string `json:"photo"`

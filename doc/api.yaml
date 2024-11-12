@@ -643,10 +643,6 @@ components:
         chatId: {$ref: "#/components/schemas/ChatId"}
         groupName: {$ref: "#/components/schemas/GroupName"}
         groupPhoto: {$ref: "#/components/schemas/Photo"}
-        isGroup:
-          description: boolean to determine if the chat is a group
-          type: boolean
-          example: false
         messageList:
           description: list of message of the chat
           type: array
@@ -660,10 +656,6 @@ components:
       description: info to create a new message
       type: object
       properties:
-        isPhoto:
-          description: boolean to determine if the message is a text or a photo
-          type: boolean
-          example: true
         isForwarded:
           description: boolean to determine if the message was forwarded
           type: boolean
@@ -680,10 +672,6 @@ components:
         userId: {$ref: "#/components/schemas/UserId"}
         chatId: {$ref: "#/components/schemas/ChatId"}
         dateTime: {$ref: "#/components/schemas/DateTime"}
-        isPhoto:
-          description: boolean to determine if the message is a text or a photo
-          type: boolean
-          example: true
         isForwarded:
           description: boolean to determine if the message was forwarded
           type: boolean
