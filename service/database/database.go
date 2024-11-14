@@ -48,6 +48,7 @@ type AppDatabase interface {
 	// Chat
 	InsertChat(chat components.ChatCreation, userperformingid int) (int, int, error)
 	AddUsersToGroup(usernamelist []string, chatid int) error
+	GetChatComponents(chatid int) ([]int, error)
 
 	Ping() error
 }
@@ -110,7 +111,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 					TimeAdded DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 					LastRead DATETIME,
 					PRIMARY KEY(UserId,ChatId),
-					CHECK((LastRead>TimeAdded) OR (LastRead IS NULL)),
+					CHECK((LastRead>=TimeAdded) OR (LastRead IS NULL)),
 					FOREIGN KEY(ChatId) REFERENCES Chat(ChatId),
 					FOREIGN KEY(UserId) REFERENCES User(UserId)
 					);`
@@ -152,10 +153,11 @@ func New(db *sql.DB) (AppDatabase, error) {
 
 	// Inizio test
 
-	// Decommenta per testare
+	// Insert in User
 	_, err = db.Exec(`
 		INSERT OR IGNORE INTO User (Username, Photo, LastAccess) VALUES ('Sim', 'sim_photo.jpg', '2024-11-01 08:30:00');
 		INSERT OR IGNORE INTO User (Username, Photo) VALUES ('Ivan','photo.png');
+		INSERT OR IGNORE INTO User (Username, Photo) VALUES ('Marco','photo.png');
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("error inserting into User: %w", err)

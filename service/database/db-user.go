@@ -26,6 +26,7 @@ func (db *appdbimpl) InsertUser(username string) (int, error) {
 	return id, err
 }
 
+
 func (db *appdbimpl) GetIdFromUsername(username string) (int, error) {
 
 	var userid int

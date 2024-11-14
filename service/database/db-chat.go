@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"git.sapienzaapps.it/fantasticcoffee/fantastic-coffee-decaffeinated/service/api/components"
-	"github.com/mattn/go-sqlite3"
 )
 
 func (db *appdbimpl) InsertChat(chat components.ChatCreation, userperformingid int) (int, int, error) {
@@ -31,35 +30,58 @@ func (db *appdbimpl) InsertChat(chat components.ChatCreation, userperformingid i
 	// start a transaction
 	tx, err :=db.c.Begin()
 	if err != nil{
-		return 0, 0, err
+		return 0, 0, ErrTransaction
 	}
 
 	// insert the chat in db
 	var chatid int
 	err = tx.QueryRow(`INSERT INTO Chat(ChatName,ChatPhoto) VALUES(?,?) RETURNING ChatId`,groupname,groupphoto).Scan(&chatid)
 	if err != nil{
-		tx.Rollback()
+		errtx := tx.Rollback()
+		if errtx != nil{
+			return 0, 0, ErrTransaction
+		}
 		return 0, 0, err
 	}
 
-	// insert all the user in ChatUser
+
+	// insert all the user in ChatUser and also check if the user performing the action is in the list
+	userinchat := false
 	for i:=0; i<len(chat.UsernameList);i++{
 
 		// takes the id of the user
 		var userid int
 		userid, err = db.GetIdFromUsername(chat.UsernameList[i])
 		if err != nil{
-			tx.Rollback()
 			return 0, 0, ErrUserNotFound
 		}
 
 		// create a row in ChatUser
-		_, err = tx.Exec("INSERT INTO ChatUser(UserId,ChatId) VALUES(?,?)",userid,chatid)
-		if err != nil{
-			tx.Rollback()
-			return 0, 0, err
+		if userid==userperformingid{
+			userinchat = true
+			// sets the LastRead for the user creating the chat
+			_, err = tx.Exec("INSERT INTO ChatUser(UserId,ChatId,LastRead) VALUES(?,?,CURRENT_TIMESTAMP)",userid,chatid)
+			if err != nil{
+				return 0, 0, err
+			}
+		}else{
+			// for the other user LastRead is not set
+			_, err = tx.Exec("INSERT INTO ChatUser(UserId,ChatId) VALUES(?,?)",userid,chatid)
+			if err != nil{
+				return 0, 0, err
+			}
 		}
 	}
+	
+	// checks userinchat
+	if !userinchat{
+		errtx := tx.Rollback()
+		if errtx != nil{
+			return 0, 0, ErrTransaction
+		}
+		return 0, 0, ErrNotInChat
+	}
+
 
 	// check if there is a text in message
 	var text sql.NullString
@@ -79,24 +101,22 @@ func (db *appdbimpl) InsertChat(chat components.ChatCreation, userperformingid i
 		photo.String = chat.FirstMessage.Photo
 	}
 	
-	
+
 	// insert the first message
 	var messageid int
 	err = tx.QueryRow("INSERT INTO Message(ChatId,UserId,Text,Photo,IsForwarded) VALUES(?,?,?,?,?) RETURNING MessageId",chatid,userperformingid,text,photo,chat.FirstMessage.IsForwarded).Scan(&messageid)
-
-	// if the error is the check failed means that the message doesn't have neither text nor photo
-	if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintCheck{
-        return 0, 0, ErrMessageEmpty
-    } else if err != nil {
+	if err != nil {
+		errtx := tx.Rollback()
+		if errtx != nil{
+			return 0, 0, ErrTransaction
+		}
         return 0, 0, err
     }
-	
-
 
 	// commit the transaction
 	err = tx.Commit()
 	if err != nil{
-		return 0, 0, err
+		return 0, 0, ErrTransaction
 	}
 
 	return chatid, messageid, err
@@ -104,36 +124,71 @@ func (db *appdbimpl) InsertChat(chat components.ChatCreation, userperformingid i
 
 
 func (db *appdbimpl) AddUsersToGroup(usernamelist []string, chatid int) error {
+	// start a transaction
+	tx, err :=db.c.Begin()
+	if err != nil{
+		return ErrTransaction
+	}
 
-	var user_exists bool
-	var err error
+	
+	// insert all the user in ChatUser
 	for i:=0; i<len(usernamelist);i++{
 
-		// check if the user exists
-		err = db.c.QueryRow(`SELECT EXISTS(SELECT * FROM User WHERE Username=?)`,usernamelist[i]).Scan(&user_exists)
-		if err != nil{
-			return err
-		}
-
-		// if the user doesn't exist raise an error
-		if !user_exists{
-			err=errors.New("user not found")
-			return err
-		}
-		
-		// if the user exists takes his id
+		// takes the id of the user
 		var userid int
 		userid, err = db.GetIdFromUsername(usernamelist[i])
 		if err != nil{
-			return err
+			errtx := tx.Rollback()
+			if errtx != nil{
+				return ErrTransaction
+			}
+			return ErrUserNotFound
 		}
 
 		// create a row in ChatUser
-		_, err = db.c.Exec("INSERT INTO ChatUser(UserId,ChatId) VALUES(?,?)",userid,chatid)
+		_, err = tx.Exec("INSERT INTO ChatUser(UserId,ChatId) VALUES(?,?)",userid,chatid)
 		if err != nil{
-			return err
+			errtx := tx.Rollback()
+			if errtx != nil{
+				return ErrTransaction
+			}
+			return ErrAlreadyInChat
 		}
-	} 
+	}
+	
+	// commit the transaction
+	err = tx.Commit()
+	if err != nil{
+		return ErrTransaction
+	}
+
 
 	return err
+}
+
+
+func (db *appdbimpl) GetChatComponents(chatid int) ([]int, error) {
+
+	var idlist []int
+	// takes the users in the chat
+	rows, err := db.c.Query(`SELECT UserId FROM ChatUser WHERE ChatId=?`,chatid)
+	if errors.Is(err,sql.ErrNoRows){
+		return idlist, ErrChatNotFound
+	}
+	if err != nil{
+		return idlist, err
+	}
+
+	defer rows.Close()
+
+	// add all the ids to the list
+	for rows.Next(){
+		var tempid int
+		err = rows.Scan(&tempid)
+		if err != nil{
+			return idlist, err
+		}
+		idlist = append(idlist, tempid)
+	}
+	return idlist, err
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// post /chats
+// post /chats/newchat
 func (rt *_router) createChat(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
 	
 	// take the user performing the action from the bearer
@@ -31,17 +31,21 @@ func (rt *_router) createChat(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 
-	// check if the user performing is in the chat
-	userperformingname, err := rt.db.GetUsernameFromId(userperformingid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusUnauthorized)
-		return
-	}
-	if userperformingname != chat.UsernameList[0]{
-		http.Error(w,database.ErrNotInChat.Error(),http.StatusUnauthorized) // 401
+
+	// check if the are at least 2 person in chat
+	if len(chat.UsernameList)<2{
+		http.Error(w,database.ErrLessTwoUserInChat.Error(),http.StatusBadRequest) // 400
 		return
 	}
 
+
+	// check if the message is empty
+	if len(chat.FirstMessage.Text)==0 && len(chat.FirstMessage.Photo)==0{
+		http.Error(w,database.ErrMessageEmpty.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	
 	// Inserts the chat in the database
 	var chatid, messageid int
 	chatid, messageid, err = rt.db.InsertChat(chat, userperformingid)
@@ -62,4 +66,68 @@ func (rt *_router) createChat(w http.ResponseWriter, r *http.Request, ps httprou
 	w.Header().Set("Content-Type","application/json")
 	w.WriteHeader(http.StatusCreated) // 201
 	_ = json.NewEncoder(w).Encode(ids)
+}
+
+
+// put /chats/{chat_id}/users
+func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
+
+	// take the user performing the action from the bearer
+	userperformingid, err := strconv.Atoi(r.Header.Get("Authorization")[7:])
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	// take the username list from the request body
+	var usernamelist components.UsernameList
+	err = json.NewDecoder(r.Body).Decode(&usernamelist)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	// take the chat id from the URL
+	chatid, err := strconv.Atoi(ps.ByName("chat_id"))
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	
+	// check if the user performing the action is in the chat
+	userinchat := false
+	idlist, err := rt.db.GetChatComponents(chatid)
+	if err != nil{
+		if errors.Is(err, database.ErrChatNotFound){
+			http.Error(w,err.Error(),http.StatusBadRequest) // 400
+			return
+		}
+		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
+		return
+	}
+	
+
+	// cicle the list to check the user performing the action
+	for i:=0;i<len(idlist);i++{
+		if idlist[i]==userperformingid{
+			userinchat = true
+		}
+	} 
+	if !userinchat{
+		http.Error(w,database.ErrNotInChat.Error(),http.StatusUnauthorized) // 401
+		return
+	}
+
+	
+	// insert the usernames in the db
+	err = rt.db.AddUsersToGroup(usernamelist.UsernameList,chatid)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+	
+
+	// set the header of the response
+	w.WriteHeader(http.StatusNoContent) // 204
 }

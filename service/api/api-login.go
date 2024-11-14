@@ -6,6 +6,7 @@ import (
 
 	"git.sapienzaapps.it/fantasticcoffee/fantastic-coffee-decaffeinated/service/api/components"
 	"git.sapienzaapps.it/fantasticcoffee/fantastic-coffee-decaffeinated/service/api/reqcontext"
+	"git.sapienzaapps.it/fantasticcoffee/fantastic-coffee-decaffeinated/service/database"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -20,6 +21,11 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, ps httprouter
 		return
 	}
 
+	// check if the username has the correct length
+	if len(username.Username)<3 || len(username.Username)>18{
+		http.Error(w,database.ErrUsernameLength.Error(),http.StatusBadRequest) // 400
+		return
+	}
 	// Insert the user in the database
 	var id int
 	id, err = rt.db.InsertUser(username.Username)
