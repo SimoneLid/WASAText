@@ -93,11 +93,21 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 		http.Error(w,err.Error(),http.StatusBadRequest) // 400
 		return
 	}
-
 	
+	
+	// check if the chat is a group
+	isgroup, err := rt.db.IsGroup(chatid)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+	if !isgroup{
+		http.Error(w,database.ErrOperationGroupOnly.Error(),http.StatusBadRequest) // 400
+		return
+	} 
+
 	// check if the user performing the action is in the chat
-	userinchat := false
-	idlist, err := rt.db.GetChatComponents(chatid)
+	userinchat, err := rt.db.IsUserInChat(chatid, userperformingid)
 	if err != nil{
 		if errors.Is(err, database.ErrChatNotFound){
 			http.Error(w,err.Error(),http.StatusBadRequest) // 400
@@ -106,17 +116,8 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
 		return
 	}
-	
-
-	// cicle the list to check the user performing the action
-	for i:=0;i<len(idlist);i++{
-		if idlist[i]==userperformingid{
-			userinchat = true
-		}
-	} 
 	if !userinchat{
 		http.Error(w,database.ErrNotInChat.Error(),http.StatusUnauthorized) // 401
-		return
 	}
 
 	
@@ -130,4 +131,136 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 
 	// set the header of the response
 	w.WriteHeader(http.StatusNoContent) // 204
+}
+
+
+// put /chats/{chat_id}/name
+func (rt *_router) setGroupName(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
+
+	// take the user performing the action from the bearer
+	userperformingid, err := strconv.Atoi(r.Header.Get("Authorization")[7:])
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	// Take the groupname from the request body
+	var newgroupname components.GroupName
+	err = json.NewDecoder(r.Body).Decode(&newgroupname)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	// take the chat id from the URL
+	chatid, err := strconv.Atoi(ps.ByName("chat_id"))
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	// check if the group name is empty
+	if len(newgroupname.GroupName)==0{
+		http.Error(w,database.ErrGroupNameLength.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	// check if the chat is a group
+	isgroup, err := rt.db.IsGroup(chatid)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+	if !isgroup{
+		http.Error(w,database.ErrOperationGroupOnly.Error(),http.StatusBadRequest) // 400
+		return
+	} 
+
+	// check if the user performing the action is in the chat
+	userinchat, err := rt.db.IsUserInChat(chatid, userperformingid)
+	if err != nil{
+		if errors.Is(err, database.ErrChatNotFound){
+			http.Error(w,err.Error(),http.StatusBadRequest) // 400
+			return
+		}
+		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
+		return
+	}
+	if !userinchat{
+		http.Error(w,database.ErrNotInChat.Error(),http.StatusUnauthorized) // 401
+		return
+	}
+
+
+	// change the group name
+	err = rt.db.ChangeGroupName(chatid, newgroupname.GroupName)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+}
+
+
+// put /users/{chat_id}/photo
+func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
+	
+	// take the user performing the action from the bearer
+	userperformingid, err := strconv.Atoi(r.Header.Get("Authorization")[7:])
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	// Take the group photo from the request body
+	var newphoto components.Photo
+	err = json.NewDecoder(r.Body).Decode(&newphoto)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	// take the chat id from the URL
+	chatid, err := strconv.Atoi(ps.ByName("chat_id"))
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	// check if the chat is a group
+	isgroup, err := rt.db.IsGroup(chatid)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+	if !isgroup{
+		http.Error(w,database.ErrOperationGroupOnly.Error(),http.StatusBadRequest) // 400
+		return
+	} 
+
+	// check if the user performing the action is in the chat
+	userinchat, err := rt.db.IsUserInChat(chatid, userperformingid)
+	if err != nil{
+		if errors.Is(err, database.ErrChatNotFound){
+			http.Error(w,err.Error(),http.StatusBadRequest) // 400
+			return
+		}
+		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
+		return
+	}
+	if !userinchat{
+		http.Error(w,database.ErrNotInChat.Error(),http.StatusUnauthorized) // 401
+		return
+	}
+
+	// if the photo is empty sets the dafult photo
+	if len(newphoto.Photo)==0{
+		newphoto.Photo="photo.png"
+	}
+
+	// change the user photo
+	err = rt.db.ChangeGroupPhoto(chatid, newphoto.Photo)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
 }

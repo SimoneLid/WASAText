@@ -570,8 +570,8 @@ components:
       type: string
       example: GruppoProva
       pattern: '.*$'
-      minLength: 3
-      maxLength: 16
+      minLength: 1
+      maxLength: 999
     
     Photo:
       title: photo

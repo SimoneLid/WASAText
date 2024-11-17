@@ -146,13 +146,13 @@ func (db *appdbimpl) AddUsersToGroup(usernamelist []string, chatid int) error {
 		}
 
 		// create a row in ChatUser
-		_, err = tx.Exec("INSERT INTO ChatUser(UserId,ChatId) VALUES(?,?)",userid,chatid)
+		_, err = tx.Exec("INSERT OR IGNORE INTO ChatUser(UserId,ChatId) VALUES(?,?)",userid,chatid)
 		if err != nil{
 			errtx := tx.Rollback()
 			if errtx != nil{
 				return ErrTransaction
 			}
-			return ErrAlreadyInChat
+			return err
 		}
 	}
 	
@@ -167,16 +167,16 @@ func (db *appdbimpl) AddUsersToGroup(usernamelist []string, chatid int) error {
 }
 
 
-func (db *appdbimpl) GetChatComponents(chatid int) ([]int, error) {
+func (db *appdbimpl) IsUserInChat(chatid int, userid int) (bool, error) {
 
 	var idlist []int
 	// takes the users in the chat
 	rows, err := db.c.Query(`SELECT UserId FROM ChatUser WHERE ChatId=?`,chatid)
-	if errors.Is(err,sql.ErrNoRows){
-		return idlist, ErrChatNotFound
-	}
 	if err != nil{
-		return idlist, err
+		if errors.Is(err,sql.ErrNoRows){
+			return false, ErrChatNotFound
+		}
+		return false, err
 	}
 
 	defer rows.Close()
@@ -186,9 +186,81 @@ func (db *appdbimpl) GetChatComponents(chatid int) ([]int, error) {
 		var tempid int
 		err = rows.Scan(&tempid)
 		if err != nil{
-			return idlist, err
+			return false, err
 		}
 		idlist = append(idlist, tempid)
 	}
-	return idlist, err
+	if rows.Err() != nil{
+		return false, err
+	}
+
+	// check if the user is in the chat
+	userinchat := false
+	for i:=0;i<len(idlist);i++{
+		if idlist[i]==userid{
+			userinchat = true
+		}
+	}
+
+
+	return userinchat, err
+}
+
+
+func (db *appdbimpl) IsGroup(chatid int) (bool, error) {
+	var name sql.NullString
+	err := db.c.QueryRow("SELECT ChatName FROM Chat WHERE ChatId=?",chatid).Scan(&name)
+	if err != nil{
+		if errors.Is(err, sql.ErrNoRows){
+			return false, ErrChatNotFound
+		}
+		return false, err
+	}
+
+	if !name.Valid{
+		return false, err
+	}
+
+	return true, err
+}
+
+func (db *appdbimpl) ChangeGroupName(chatid int, groupname string) error {
+
+	res, err := db.c.Exec("UPDATE Chat SET ChatName=? WHERE ChatId=?",groupname,chatid)
+	if err != nil{
+		return err
+	}
+	
+	// check if the row effected are 0 which mean the chat don't exists
+	eff, err := res.RowsAffected()
+	if err != nil{
+		return err
+	}
+
+	if eff==0{
+		return ErrChatNotFound
+	}
+
+	return err
+}
+
+
+func (db *appdbimpl) ChangeGroupPhoto(chatid int, photo string) error {
+
+	res, err := db.c.Exec("UPDATE Chat SET ChatPhoto=? WHERE ChatId=?",photo,chatid)
+	if err != nil{
+		return err
+	}
+	
+	// check if the row effected are 0 which mean the chat don't exists
+	eff, err := res.RowsAffected()
+	if err != nil{
+		return err
+	}
+
+	if eff==0{
+		return ErrChatNotFound
+	}
+
+	return err
 }

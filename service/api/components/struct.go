@@ -4,6 +4,10 @@ type Username struct{
 	Username string `json:"username"`
 }
 
+type GroupName struct{
+	GroupName string `json:"groupname"`
+}
+
 type UsernameList struct{
 	UsernameList []string `json:"usernamelist"`
 }
@@ -34,5 +38,9 @@ type ChatCreation struct{
 type MessageToSend struct{
 	IsForwarded bool `json:"isforwarded"`
 	Text string `json:"text"`
+	Photo string `json:"photo"`
+}
+
+type Photo struct{
 	Photo string `json:"photo"`
 }

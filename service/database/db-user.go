@@ -1,5 +1,11 @@
 package database
 
+import (
+	"strings"
+
+	"github.com/mattn/go-sqlite3"
+)
+
 
 func (db *appdbimpl) InsertUser(username string) (int, error) {
 
@@ -46,4 +52,49 @@ func (db *appdbimpl) GetUsernameFromId(userid int) (string, error) {
 		return "", err
 	}
 	return username, err
+}
+
+
+func (db *appdbimpl) ChangeUsername(userid int, username string) error {
+
+	res, err := db.c.Exec("UPDATE User SET Username=? WHERE UserId=?",username,userid)
+	if err != nil{
+		if strings.Contains(err.Error(),sqlite3.ErrConstraintUnique.Error()){
+			return ErrUsernameAlreadyExists
+		}
+		return err
+	}
+	
+	// check if the row effected are 0 which mean the user don't exists
+	eff, err := res.RowsAffected()
+	if err != nil{
+		return err
+	}
+
+	if eff==0{
+		return ErrUserNotFound
+	}
+
+	return err
+}
+
+
+func (db *appdbimpl) ChangeUserPhoto(userid int, photo string) error {
+
+	res, err := db.c.Exec("UPDATE User SET Photo=? WHERE UserId=?",photo,userid)
+	if err != nil{
+		return err
+	}
+	
+	// check if the row effected are 0 which mean the user don't exists
+	eff, err := res.RowsAffected()
+	if err != nil{
+		return err
+	}
+
+	if eff==0{
+		return ErrUserNotFound
+	}
+
+	return err
 }

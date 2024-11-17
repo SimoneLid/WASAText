@@ -44,11 +44,16 @@ type AppDatabase interface {
 	InsertUser(username string ) (int, error)
 	GetIdFromUsername(username string) (int, error)
 	GetUsernameFromId(userid int) (string, error)
+	ChangeUsername(userid int, username string) error
+	ChangeUserPhoto(userid int, photo string) error
 
 	// Chat
 	InsertChat(chat components.ChatCreation, userperformingid int) (int, int, error)
 	AddUsersToGroup(usernamelist []string, chatid int) error
-	GetChatComponents(chatid int) ([]int, error)
+	IsUserInChat(chatid int, userid int) (bool, error)
+	IsGroup(chatid int) (bool, error)
+	ChangeGroupName(chatid int, groupname string) error
+	ChangeGroupPhoto(chatid int, photo string) error
 
 	Ping() error
 }
@@ -163,17 +168,32 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, fmt.Errorf("error inserting into User: %w", err)
 	}
 
-	/*
-	// Inserimenti per la tabella Chat
+	
+	// Insert in Chat
 	_, err = db.Exec(`
-		INSERT INTO Chat (ChatName, ChatPhoto, IsGroup) VALUES (NULL, NULL, 0);
-		INSERT INTO Chat (ChatName, ChatPhoto, IsGroup) VALUES ('Group Chat 1', 'group1_photo.jpg', 1);
-		INSERT INTO Chat (ChatName, ChatPhoto, IsGroup) VALUES ('Group Chat 2', 'group2_photo.jpg', 1);
+		INSERT OR IGNORE INTO Chat (ChatId, ChatName, ChatPhoto) VALUES (1, NULL, NULL);
+		INSERT OR IGNORE INTO Chat (ChatId, ChatName, ChatPhoto) VALUES (2, 'Group Chat 1', 'group1_photo.jpg');
+		INSERT OR IGNORE INTO Chat (ChatId, ChatName, ChatPhoto) VALUES (3, 'Group Chat 2', 'group2_photo.jpg');
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("error inserting into Chat: %w", err)
 	}
 
+
+	// Insert in ChatUser
+	_, err = db.Exec(`
+		INSERT OR IGNORE INTO ChatUser (UserId, ChatId, TimeAdded) VALUES (1, 1, '2024-11-01 08:30:00');
+		INSERT OR IGNORE INTO ChatUser (UserId, ChatId) VALUES (2, 1);
+		INSERT OR IGNORE INTO ChatUser (UserId, ChatId) VALUES (1, 2);
+		INSERT OR IGNORE INTO ChatUser (UserId, ChatId) VALUES (2, 2);
+		INSERT OR IGNORE INTO ChatUser (UserId, ChatId) VALUES (1, 3);
+		INSERT OR IGNORE INTO ChatUser (UserId, ChatId) VALUES (3, 3);
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("error inserting into ChatUser: %w", err)
+	}
+
+	/*
 	// Inserimenti per la tabella Message
 	_, err = db.Exec(`
 		INSERT INTO Message (ChatId, UserId, Text, Photo, IsPhoto, IsForwarded, TimeStamp) 
@@ -199,17 +219,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, fmt.Errorf("error inserting into Comment: %w", err)
 	}
 
-	// Inserimenti per la tabella ChatUser
-	_, err = db.Exec(`
-		INSERT INTO ChatUser (UserId, ChatId, TimeAdded, LastRead) VALUES (1, 1, '2024-11-01 08:30:00', '2024-11-01 08:50:00');
-		INSERT INTO ChatUser (UserId, ChatId, TimeAdded, LastRead) VALUES (2, 1, '2024-11-01 08:40:00', '2024-11-01 09:00:00');
-		INSERT INTO ChatUser (UserId, ChatId, TimeAdded, LastRead) VALUES (2, 2, '2024-11-02 09:00:00', NULL);
-		INSERT INTO ChatUser (UserId, ChatId, TimeAdded, LastRead) VALUES (3, 2, '2024-11-02 09:05:00', '2024-11-03 10:10:00');
-		INSERT INTO ChatUser (UserId, ChatId, TimeAdded, LastRead) VALUES (1, 2, '2024-11-02 09:10:00', '2024-11-02 09:20:00');
-	`)
-	if err != nil {
-		return nil, fmt.Errorf("error inserting into ChatUser: %w", err)
-	}
+	
 
 	fmt.Println("Data inserted successfully!")
 	*/
