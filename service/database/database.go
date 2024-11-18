@@ -55,6 +55,10 @@ type AppDatabase interface {
 	ChangeGroupName(chatid int, groupname string) error
 	ChangeGroupPhoto(chatid int, photo string) error
 
+	// Message
+	InsertMessage(message components.MessageToSend, isforwarded bool, chatid int, userperformingid int) (int, error)
+	GetMessage(messageid int) (components.Message, error)
+
 	Ping() error
 }
 

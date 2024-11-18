@@ -104,7 +104,7 @@ func (db *appdbimpl) InsertChat(chat components.ChatCreation, userperformingid i
 
 	// insert the first message
 	var messageid int
-	err = tx.QueryRow("INSERT INTO Message(ChatId,UserId,Text,Photo,IsForwarded) VALUES(?,?,?,?,?) RETURNING MessageId",chatid,userperformingid,text,photo,chat.FirstMessage.IsForwarded).Scan(&messageid)
+	err = tx.QueryRow("INSERT INTO Message(ChatId,UserId,Text,Photo,IsForwarded) VALUES(?,?,?,?,false) RETURNING MessageId",chatid,userperformingid,text,photo).Scan(&messageid)
 	if err != nil {
 		errtx := tx.Rollback()
 		if errtx != nil{
@@ -173,22 +173,27 @@ func (db *appdbimpl) IsUserInChat(chatid int, userid int) (bool, error) {
 	// takes the users in the chat
 	rows, err := db.c.Query(`SELECT UserId FROM ChatUser WHERE ChatId=?`,chatid)
 	if err != nil{
-		if errors.Is(err,sql.ErrNoRows){
-			return false, ErrChatNotFound
-		}
 		return false, err
 	}
-
+	
 	defer rows.Close()
 
+	if !rows.Next(){
+		return false, ErrChatNotFound
+	}
+
 	// add all the ids to the list
-	for rows.Next(){
+	for{
 		var tempid int
 		err = rows.Scan(&tempid)
 		if err != nil{
 			return false, err
 		}
 		idlist = append(idlist, tempid)
+
+		if !rows.Next(){
+			break
+		}
 	}
 	if rows.Err() != nil{
 		return false, err

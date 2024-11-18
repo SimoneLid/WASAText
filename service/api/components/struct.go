@@ -35,11 +35,25 @@ type ChatCreation struct{
 	FirstMessage MessageToSend `json:"firstmessage"`
 }
 
+type MessageId struct{
+	MessageId int `json:"messageid"`
+}
+
 type MessageToSend struct{
-	IsForwarded bool `json:"isforwarded"`
 	Text string `json:"text"`
 	Photo string `json:"photo"`
 }
+
+type Message struct{
+	MessageId int `json:"messageid"`
+	ChatId int `json:"chatid"`
+	UserId int `json:"userid"`
+	Text string `json:"text"`
+	Photo string `json:"photo"`
+	IsForwarded bool `json:"isforwarded"`
+	TimeStamp string `json:"timestamp"`
+}
+
 
 type Photo struct{
 	Photo string `json:"photo"`

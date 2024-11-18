@@ -20,3 +20,4 @@ var ErrGroupNameLength = errors.New("the group name can't be empty")
 
 // message
 var ErrMessageEmpty = errors.New("the message must have photo or text")
+var ErrMessNotFound = errors.New("the message requested was not found")

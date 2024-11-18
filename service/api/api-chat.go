@@ -118,6 +118,7 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 	}
 	if !userinchat{
 		http.Error(w,database.ErrNotInChat.Error(),http.StatusUnauthorized) // 401
+		return
 	}
 
 	
