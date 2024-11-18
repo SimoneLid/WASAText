@@ -352,7 +352,11 @@ paths:
           description: Searched users returned succesfully
           content:
             application/json:
-              schema: {$ref: "#/components/schemas/UsernameList"}
+              schema: 
+                type: object
+                description: username starting with the search parameter
+                properties:
+                  usernamelist: {$ref: "#/components/schemas/UsernameList"}
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "404": {$ref: "#/components/responses/NotFound"}
@@ -418,10 +422,10 @@ paths:
           content:
             application/json:
               schema:
-              type: object
-              description: id of the new message created
-              properties: 
-                messageid: {$ref: "#/components/schemas/MessageId"}
+                type: object
+                description: id of the new message created
+                properties: 
+                  messageid: {$ref: "#/components/schemas/MessageId"}
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "404": {$ref: "#/components/responses/NotFound"}
@@ -469,6 +473,7 @@ paths:
         content:
           application/json:
             schema:
+              type: object
               description: emoji to add as comment to the message
               properties:
                 emoji: {$ref: "#/components/schemas/Emoji"}
