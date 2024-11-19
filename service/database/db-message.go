@@ -60,3 +60,53 @@ func (db *appdbimpl) GetMessage(messageid int) (components.Message, error) {
 
 	return message, err
 }
+
+func (db *appdbimpl) IsMessageInChat(chatid int, messageid int) (bool, error) {
+
+	messageinchat:=false
+	err := db.c.QueryRow(`SELECT EXISTS(SELECT * FROM Message WHERE ChatId=? AND MessageId=?)`,chatid,messageid).Scan(&messageinchat)
+	if err != nil{
+		return false, err
+	}
+
+	return messageinchat, err
+}
+
+
+func (db *appdbimpl) DeleteMessage(messageid int, chatid int) error {
+
+	_, err := db.c.Exec(`DELETE FROM Message WHERE MessageId=? AND ChatId=?`,messageid,chatid)
+	if err != nil{
+		return err
+	}
+
+	// if the aren't other message in the chat, the chat is deleted
+	var n_messages int
+	err = db.c.QueryRow(`SELECT COUNT(*) FROM Message WHERE ChatId=?`,chatid).Scan(&n_messages)
+	if err != nil{
+		return err
+	}
+
+	if n_messages==0{
+		_, err = db.c.Exec(`DELETE FROM Chat WHERE ChatId=?`,chatid)
+		if err != nil{
+			return err
+		}
+	}
+
+	return err
+}
+
+func (db *appdbimpl) GetUserFromMessage(messageid int) (int, error) {
+
+	var userid int
+	err := db.c.QueryRow(`SELECT UserId FROM Message WHERE MessageId=?`,messageid).Scan(&userid)
+	if err != nil{
+		if errors.Is(err,sql.ErrNoRows){
+			return 0, ErrMessNotFound
+		}
+		return 0, err
+	}
+
+	return userid, err
+}

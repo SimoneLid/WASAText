@@ -54,7 +54,10 @@ type Message struct{
 	TimeStamp string `json:"timestamp"`
 }
 
-
 type Photo struct{
 	Photo string `json:"photo"`
+}
+
+type Emoji struct{
+	Emoji string `json:"emoji"`
 }

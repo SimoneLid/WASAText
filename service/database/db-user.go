@@ -98,3 +98,15 @@ func (db *appdbimpl) ChangeUserPhoto(userid int, photo string) error {
 
 	return err
 }
+
+
+func (db *appdbimpl) IsUserInChat(chatid int, userid int) (bool, error) {
+
+	userinchat:=false
+	err := db.c.QueryRow(`SELECT EXISTS(SELECT * FROM ChatUser WHERE ChatId=? AND UserId=?)`,chatid,userid).Scan(&userinchat)
+	if err != nil{
+		return false, err
+	}
+
+	return userinchat, err
+}

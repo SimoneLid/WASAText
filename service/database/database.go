@@ -42,15 +42,15 @@ import (
 type AppDatabase interface {
 	// User
 	InsertUser(username string ) (int, error)
-	GetIdFromUsername(username string) (int, error)
-	GetUsernameFromId(userid int) (string, error)
+	//GetIdFromUsername(username string) (int, error)
+	//GetUsernameFromId(userid int) (string, error)
 	ChangeUsername(userid int, username string) error
 	ChangeUserPhoto(userid int, photo string) error
+	IsUserInChat(chatid int, userid int) (bool, error)
 
 	// Chat
 	InsertChat(chat components.ChatCreation, userperformingid int) (int, int, error)
 	AddUsersToGroup(usernamelist []string, chatid int) error
-	IsUserInChat(chatid int, userid int) (bool, error)
 	IsGroup(chatid int) (bool, error)
 	ChangeGroupName(chatid int, groupname string) error
 	ChangeGroupPhoto(chatid int, photo string) error
@@ -58,6 +58,13 @@ type AppDatabase interface {
 	// Message
 	InsertMessage(message components.MessageToSend, isforwarded bool, chatid int, userperformingid int) (int, error)
 	GetMessage(messageid int) (components.Message, error)
+	IsMessageInChat(chatid int, messageid int) (bool, error)
+	DeleteMessage(messageid int, chatid int) error
+	GetUserFromMessage(messageid int) (int, error)
+
+	// Comment
+	InsertComment(messageid int, userid int, emoji string) error
+	DeleteComment(messageid int, userid int) error
 
 	Ping() error
 }
@@ -99,7 +106,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 					IsForwarded BOOLEAN NOT NULL,
 					TimeStamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 					CHECK (Text IS NOT NULL OR Photo IS NOT NULL),
-					FOREIGN KEY(ChatId) REFERENCES Chat(ChatId),
+					FOREIGN KEY(ChatId) REFERENCES Chat(ChatId) ON DELETE CASCADE,
 					FOREIGN KEY(UserId) REFERENCES User(UserId)
 					);`
 
@@ -109,7 +116,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 					UserId INTEGER NOT NULL,
 					Emoji TEXT,
 					PRIMARY KEY(MessageId,UserId),
-					FOREIGN KEY(MessageId) REFERENCES Message(MessageId),
+					FOREIGN KEY(MessageId) REFERENCES Message(MessageId) ON DELETE CASCADE,
 					FOREIGN KEY(UserId) REFERENCES User(UserId)
 					);`
 
@@ -121,12 +128,16 @@ func New(db *sql.DB) (AppDatabase, error) {
 					LastRead DATETIME,
 					PRIMARY KEY(UserId,ChatId),
 					CHECK((LastRead>=TimeAdded) OR (LastRead IS NULL)),
-					FOREIGN KEY(ChatId) REFERENCES Chat(ChatId),
+					FOREIGN KEY(ChatId) REFERENCES Chat(ChatId) ON DELETE CASCADE,
 					FOREIGN KEY(UserId) REFERENCES User(UserId)
 					);`
 
+	_, err := db.Exec("PRAGMA foreign_keys=ON")
+	if err != nil {
+		return nil, err
+	}
 
-	_, err := db.Exec(User)
+	_, err = db.Exec(User)
 	if err != nil {
 			return nil, fmt.Errorf("error creating database structure: %w", err)
 	}
@@ -197,22 +208,23 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, fmt.Errorf("error inserting into ChatUser: %w", err)
 	}
 
-	/*
+	
 	// Inserimenti per la tabella Message
 	_, err = db.Exec(`
-		INSERT INTO Message (ChatId, UserId, Text, Photo, IsPhoto, IsForwarded, TimeStamp) 
-		VALUES (1, 1, 'Hello, this is a private message.', NULL, 0, 0, '2024-11-01 08:45:00');
+		INSERT OR IGNORE INTO Message (MessageId, ChatId, UserId, Text, Photo, IsForwarded) 
+		VALUES (1, 1, 1, 'Mess Prova 1', NULL, 0);
 
-		INSERT INTO Message (ChatId, UserId, Text, Photo, IsPhoto, IsForwarded, TimeStamp) 
-		VALUES (2, 2, NULL, 'photo1.jpg', 1, 1, '2024-11-02 09:20:00');
+		INSERT OR IGNORE INTO Message (MessageId, ChatId, UserId, Text, Photo, IsForwarded) 
+		VALUES (2, 2, 2, NULL, 'photo1.jpg', 1);
 
-		INSERT INTO Message (ChatId, UserId, Text, Photo, IsPhoto, IsForwarded, TimeStamp) 
-		VALUES (2, 3, 'Welcome to the group chat!', NULL, 0, 0, '2024-11-03 10:05:00');
+		INSERT OR IGNORE INTO Message (MessageId, ChatId, UserId, Text, Photo, IsForwarded) 
+		VALUES (3, 3, 3, 'Welcome to the group chat!', NULL, 0);
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("error inserting into Message: %w", err)
 	}
 
+	/*
 	// Inserimenti per la tabella Comment
 	_, err = db.Exec(`
 		INSERT INTO Comment (MessageId, UserId, Emoji) VALUES (1, 2, '👍');

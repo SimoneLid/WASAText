@@ -38,6 +38,11 @@ func (rt *_router) createChat(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 
+	// if there are more than 2 users check that the group name is not empty
+	if len(chat.UsernameList)>2 && len(chat.GroupName)==0{
+		http.Error(w,database.ErrGroupNameLength.Error(),http.StatusBadRequest) // 400
+		return
+	}
 
 	// check if the message is empty
 	if len(chat.FirstMessage.Text)==0 && len(chat.FirstMessage.Photo)==0{
@@ -109,15 +114,11 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 	// check if the user performing the action is in the chat
 	userinchat, err := rt.db.IsUserInChat(chatid, userperformingid)
 	if err != nil{
-		if errors.Is(err, database.ErrChatNotFound){
-			http.Error(w,err.Error(),http.StatusBadRequest) // 400
-			return
-		}
 		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
 		return
 	}
 	if !userinchat{
-		http.Error(w,database.ErrNotInChat.Error(),http.StatusUnauthorized) // 401
+		http.Error(w,database.ErrUserNotInChat.Error(),http.StatusUnauthorized) // 401
 		return
 	}
 
@@ -188,7 +189,7 @@ func (rt *_router) setGroupName(w http.ResponseWriter, r *http.Request, ps httpr
 		return
 	}
 	if !userinchat{
-		http.Error(w,database.ErrNotInChat.Error(),http.StatusUnauthorized) // 401
+		http.Error(w,database.ErrUserNotInChat.Error(),http.StatusUnauthorized) // 401
 		return
 	}
 
@@ -249,7 +250,7 @@ func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request, ps http
 		return
 	}
 	if !userinchat{
-		http.Error(w,database.ErrNotInChat.Error(),http.StatusUnauthorized) // 401
+		http.Error(w,database.ErrUserNotInChat.Error(),http.StatusUnauthorized) // 401
 		return
 	}
 

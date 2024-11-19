@@ -48,7 +48,7 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, ps httpro
 		return
 	}
 	if !userinchat{
-		http.Error(w,database.ErrNotInChat.Error(),http.StatusUnauthorized) // 401
+		http.Error(w,database.ErrUserNotInChat.Error(),http.StatusUnauthorized) // 401
 		return
 	}
 
@@ -105,15 +105,11 @@ func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request, ps htt
 	// check if the user performing the action is in the chat
 	userinchat, err := rt.db.IsUserInChat(chatid, userperformingid)
 	if err != nil{
-		if errors.Is(err, database.ErrChatNotFound){
-			http.Error(w,err.Error(),http.StatusBadRequest) // 400
-			return
-		}
 		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
 		return
 	}
 	if !userinchat{
-		http.Error(w,database.ErrNotInChat.Error(),http.StatusUnauthorized) // 401
+		http.Error(w,database.ErrUserNotInChat.Error(),http.StatusUnauthorized) // 401
 		return
 	}
 
@@ -148,4 +144,72 @@ func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request, ps htt
 	w.Header().Set("Content-Type","application/json")
 	w.WriteHeader(http.StatusCreated) // 201
 	_ = json.NewEncoder(w).Encode(id)
+}
+
+// delete /chats/{chat_id}/messages/{message_id}
+func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
+
+	// take the user performing the action from the bearer
+	userperformingid, err := strconv.Atoi(r.Header.Get("Authorization")[7:])
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	// take the chat id from the URL
+	chatid, err := strconv.Atoi(ps.ByName("chat_id"))
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	// take the message id from the URL
+	messageid, err := strconv.Atoi(ps.ByName("message_id"))
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	// check if the message is in the chat
+	messageinchat, err := rt.db.IsMessageInChat(chatid, messageid)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
+		return
+	}
+	if !messageinchat{
+		http.Error(w,database.ErrMessNotInChat.Error(),http.StatusUnauthorized) // 401
+		return
+	}
+
+	// check if the user performing the action is in the chat
+	userinchat, err := rt.db.IsUserInChat(chatid, userperformingid)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
+		return
+	}
+	if !userinchat{
+		http.Error(w,database.ErrUserNotInChat.Error(),http.StatusUnauthorized) // 401
+		return
+	}
+
+	// check if the user is the same that sent the message
+	userid, err := rt.db.GetUserFromMessage(messageid)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
+		return
+	}
+	if userid != userperformingid{
+		http.Error(w,database.ErrMessNotSent.Error(),http.StatusUnauthorized) // 401
+		return
+	}
+
+	// deletes the message if exists
+	err = rt.db.DeleteMessage(messageid, chatid)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	// set the header of the response
+	w.WriteHeader(http.StatusNoContent) // 204
 }

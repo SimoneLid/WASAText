@@ -79,7 +79,7 @@ func (db *appdbimpl) InsertChat(chat components.ChatCreation, userperformingid i
 		if errtx != nil{
 			return 0, 0, ErrTransaction
 		}
-		return 0, 0, ErrNotInChat
+		return 0, 0, ErrUserNotInChat
 	}
 
 
@@ -164,51 +164,6 @@ func (db *appdbimpl) AddUsersToGroup(usernamelist []string, chatid int) error {
 
 
 	return err
-}
-
-
-func (db *appdbimpl) IsUserInChat(chatid int, userid int) (bool, error) {
-
-	var idlist []int
-	// takes the users in the chat
-	rows, err := db.c.Query(`SELECT UserId FROM ChatUser WHERE ChatId=?`,chatid)
-	if err != nil{
-		return false, err
-	}
-	
-	defer rows.Close()
-
-	if !rows.Next(){
-		return false, ErrChatNotFound
-	}
-
-	// add all the ids to the list
-	for{
-		var tempid int
-		err = rows.Scan(&tempid)
-		if err != nil{
-			return false, err
-		}
-		idlist = append(idlist, tempid)
-
-		if !rows.Next(){
-			break
-		}
-	}
-	if rows.Err() != nil{
-		return false, err
-	}
-
-	// check if the user is in the chat
-	userinchat := false
-	for i:=0;i<len(idlist);i++{
-		if idlist[i]==userid{
-			userinchat = true
-		}
-	}
-
-
-	return userinchat, err
 }
 
 

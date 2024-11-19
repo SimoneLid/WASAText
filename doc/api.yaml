@@ -486,11 +486,11 @@ paths:
         "500": {$ref: "#/components/responses/InternalServerError"}
   
   
-  /chats/{chat_id}/messages/{message_id}/comments/{comment_id}:
+  /chats/{chat_id}/messages/{message_id}/comments/{user_id}:
     parameters:
     - $ref: "#/components/parameters/ChatId"
     - $ref: "#/components/parameters/MessageId"
-    - $ref: "#/components/parameters/CommentId"
+    - $ref: "#/components/parameters/UserId"
     delete:
       security:
         - bearerAuth: []
@@ -543,15 +543,6 @@ components:
         example: 1
         readOnly: true
     
-    CommentId:
-      name: comment_id
-      in: path
-      required: true
-      description: Comment ID
-      schema:
-        type: integer
-        example: 1
-        readOnly: true
         
     SearchUsers:
       name: search_users
