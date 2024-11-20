@@ -166,6 +166,29 @@ func (db *appdbimpl) AddUsersToGroup(usernamelist []string, chatid int) error {
 	return err
 }
 
+func (db *appdbimpl) DeleteUserFromGroup(userid int, chatid int) error {
+
+	_, err := db.c.Exec(`DELETE FROM ChatUser WHERE UserId=? AND ChatId=?`,userid,chatid)
+	if err != nil{
+		return err
+	}
+
+	// if the aren't other users in the chat, the chat is deleted
+	var n_users int
+	err = db.c.QueryRow(`SELECT COUNT(*) FROM ChatUser WHERE ChatId=?`,chatid).Scan(&n_users)
+	if err != nil{
+		return err
+	}
+
+	if n_users==0{
+		_, err = db.c.Exec(`DELETE FROM Chat WHERE ChatId=?`,chatid)
+		if err != nil{
+			return err
+		}
+	}
+
+	return err
+}
 
 func (db *appdbimpl) IsGroup(chatid int) (bool, error) {
 	var name sql.NullString
@@ -223,4 +246,86 @@ func (db *appdbimpl) ChangeGroupPhoto(chatid int, photo string) error {
 	}
 
 	return err
+}
+
+func (db *appdbimpl) GetUserChats(userid int) ([]components.ChatPreview, error){
+	
+	chats := []components.ChatPreview{}
+
+	// search all the groups where the user is with the last message
+	rowsgroup, err := db.c.Query(`SELECT c.ChatId, c.ChatName, c.ChatPhoto, m.MessageId, m.ChatId, m.UserId, m.Text, m.Photo, m.Timestamp
+	FROM ChatUser cu JOIN Chat c ON cu.ChatId = c.ChatId JOIN Message m ON m.ChatId = c.ChatId
+	WHERE cu.UserId = ? AND c.ChatName IS NOT NULL
+    AND m.Timestamp = (SELECT MAX(Timestamp) FROM Message WHERE ChatId = c.ChatId)`,userid)
+	if err != nil{
+		return chats, err
+	}
+
+	
+	defer rowsgroup.Close()
+	
+	// add all the group to the list
+	for rowsgroup.Next(){
+		
+		var currentchat components.ChatPreview
+		var text sql.NullString
+		var photo sql.NullString
+		err = rowsgroup.Scan(&currentchat.ChatId,&currentchat.GroupName,&currentchat.GroupPhoto,&currentchat.LastMessage.MessageId,&currentchat.LastMessage.ChatId,&currentchat.LastMessage.UserId,&text,&photo,&currentchat.LastMessage.TimeStamp)
+		if err != nil{
+			return chats, err
+		}
+		
+		// check if text and photo of the message are not null
+		if text.Valid{
+			currentchat.LastMessage.Text=text.String
+		}
+		if photo.Valid{
+			currentchat.LastMessage.Photo=photo.String
+		}
+
+		chats = append(chats, currentchat)
+	}
+
+	if rowsgroup.Err() != nil{
+		return chats, err
+	}
+
+
+	// search all the chats where the user is with the last message, setting the name and photo equal to the other user of the chat
+	rowschat, err := db.c.Query(`SELECT c.ChatId, u.Username, u.Photo, m.MessageId, m.ChatId, m.UserId, m.Text, m.Photo, m.Timestamp
+	FROM ChatUser cu JOIN Chat c ON cu.ChatId = c.ChatId JOIN Message m ON m.ChatId = c.ChatId JOIN ChatUser cu2 ON cu2.ChatId=cu.ChatId JOIN User u ON cu2.UserId = u.UserId
+	WHERE cu.UserId = ? AND c.ChatName IS NULL AND u.UserId<>cu.UserId
+	AND m.Timestamp = (SELECT MAX(Timestamp) FROM Message WHERE ChatId = c.ChatId)`,userid)
+	if err != nil{
+		return chats, err
+	}
+
+	defer rowschat.Close()
+
+	// add all the chat to the list
+	for rowschat.Next(){
+		var currentchat components.ChatPreview
+		var text sql.NullString
+		var photo sql.NullString
+		err = rowschat.Scan(&currentchat.ChatId,&currentchat.GroupName,&currentchat.GroupPhoto,&currentchat.LastMessage.MessageId,&currentchat.LastMessage.ChatId,&currentchat.LastMessage.UserId,&text,&photo,&currentchat.LastMessage.TimeStamp)
+		if err != nil{
+			return chats, err
+		}
+
+		// check if text and photo of the message are not null
+		if text.Valid{
+			currentchat.LastMessage.Text=text.String
+		}
+		if photo.Valid{
+			currentchat.LastMessage.Photo=photo.String
+		}
+
+		chats = append(chats, currentchat)
+	}
+
+	if rowschat.Err() != nil{
+		return chats, err
+	}
+
+	return chats, err
 }

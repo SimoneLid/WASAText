@@ -36,29 +36,29 @@ func (db *appdbimpl) InsertMessage(message components.MessageToSend, isforwarded
 	return messageid, err
 }
 
-func (db *appdbimpl) GetMessage(messageid int) (components.Message, error) {
+func (db *appdbimpl) GetMessage(messageid int) (string, string, error) {
 
-	var message components.Message
-	var text sql.NullString
-	var photo sql.NullString
-	err := db.c.QueryRow(`SELECT * FROM Message WHERE MessageId=?`,messageid).Scan(&message.MessageId,&message.ChatId,&message.UserId,&text,&photo,&message.IsForwarded,&message.TimeStamp)
+	var textnull sql.NullString
+	var photonull sql.NullString
+	err := db.c.QueryRow(`SELECT Text,Photo FROM Message WHERE MessageId=?`,messageid).Scan(&textnull,&photonull)
 	if err != nil{
 		if errors.Is(err,sql.ErrNoRows){
-			return message, ErrMessNotFound
+			return "", "", ErrMessNotFound
 		}
-		return message, err
+		return "", "", err
 	}
 
+	var text string
+	var photo string
 	// copies the values that can be NULL
-	if text.Valid{
-		message.Text=text.String
+	if textnull.Valid{
+		text=textnull.String
 	}
-	if photo.Valid{
-		message.Photo=photo.String
+	if photonull.Valid{
+		photo=photonull.String
 	}
 
-
-	return message, err
+	return text, photo, err
 }
 
 func (db *appdbimpl) IsMessageInChat(chatid int, messageid int) (bool, error) {

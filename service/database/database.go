@@ -42,22 +42,24 @@ import (
 type AppDatabase interface {
 	// User
 	InsertUser(username string ) (int, error)
-	//GetIdFromUsername(username string) (int, error)
-	//GetUsernameFromId(userid int) (string, error)
 	ChangeUsername(userid int, username string) error
 	ChangeUserPhoto(userid int, photo string) error
 	IsUserInChat(chatid int, userid int) (bool, error)
+	GetUsernameFromId(userid int) (string, error)
+	GetIdFromUsername(username string) (int, error)
 
 	// Chat
 	InsertChat(chat components.ChatCreation, userperformingid int) (int, int, error)
 	AddUsersToGroup(usernamelist []string, chatid int) error
+	DeleteUserFromGroup(userid int, chatid int) error
 	IsGroup(chatid int) (bool, error)
 	ChangeGroupName(chatid int, groupname string) error
 	ChangeGroupPhoto(chatid int, photo string) error
+	GetUserChats(userid int) ([]components.ChatPreview, error)
 
 	// Message
 	InsertMessage(message components.MessageToSend, isforwarded bool, chatid int, userperformingid int) (int, error)
-	GetMessage(messageid int) (components.Message, error)
+	GetMessage(messageid int) (string, string, error)
 	IsMessageInChat(chatid int, messageid int) (bool, error)
 	DeleteMessage(messageid int, chatid int) error
 	GetUserFromMessage(messageid int) (int, error)

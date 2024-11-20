@@ -16,8 +16,11 @@ func (rt *_router) Handler() http.Handler {
 	// Chats routes
 	rt.router.POST("/newchat", rt.wrap(rt.createChat))
 	rt.router.PUT("/chats/:chat_id/users", rt.wrap(rt.addToGroup))
+	rt.router.DELETE("/chats/:chat_id/users/:user_id",rt.wrap(rt.leaveGroup))
 	rt.router.PUT("/chats/:chat_id/name", rt.wrap(rt.setGroupName))
 	rt.router.PUT("/chats/:chat_id/photo", rt.wrap(rt.setGroupPhoto))
+	rt.router.GET("/chats",rt.wrap(rt.getMyConversations))
+
 
 	// Message routes
 	rt.router.POST("/chats/:chat_id/messages", rt.wrap(rt.sendMessage))

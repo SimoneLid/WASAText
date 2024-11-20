@@ -28,11 +28,23 @@ type ChatMessId struct{
 	MessageId int `json:"messageid"`
 }
 
+type AllChat struct{
+	Username string `json:"username"`
+	ChatList []ChatPreview `json:"chatlist"`
+}
+
 type ChatCreation struct{
 	UsernameList []string `json:"usernamelist"`
 	GroupName string `json:"groupname"`
 	GroupPhoto string `json:"groupphoto"`
 	FirstMessage MessageToSend `json:"firstmessage"`
+}
+
+type ChatPreview struct{
+	ChatId int `json:"chatid"`
+	GroupName string `json:"groupname"`
+	GroupPhoto string `json:"groupphoto"`
+	LastMessage MessagePreview `json:"lastmessage"`
 }
 
 type MessageId struct{
@@ -44,6 +56,15 @@ type MessageToSend struct{
 	Photo string `json:"photo"`
 }
 
+type MessagePreview struct{
+	MessageId int `json:"messageid"`
+	ChatId int `json:"chatid"`
+	UserId int `json:"userid"`
+	Text string `json:"text"`
+	Photo string `json:"photo"`
+	TimeStamp string `json:"timestamp"`
+}
+
 type Message struct{
 	MessageId int `json:"messageid"`
 	ChatId int `json:"chatid"`
@@ -52,6 +73,13 @@ type Message struct{
 	Photo string `json:"photo"`
 	IsForwarded bool `json:"isforwarded"`
 	TimeStamp string `json:"timestamp"`
+	CommentList []Comment `json:"commentlist"`
+}
+
+type Comment struct{
+	MessageId int `json:"messageid"`
+	UserId int `json:"userid"`
+	Emoji string `json:"emoji"`
 }
 
 type Photo struct{

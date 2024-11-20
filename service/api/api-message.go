@@ -114,8 +114,7 @@ func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request, ps htt
 	}
 
 	// takes the info of the message to forward
-	var message components.Message
-	message, err = rt.db.GetMessage(messageid.MessageId)
+	text, photo, err := rt.db.GetMessage(messageid.MessageId)
 	if err != nil{
 		http.Error(w,err.Error(),http.StatusBadRequest) // 400
 		return
@@ -124,8 +123,8 @@ func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request, ps htt
 
 	// creates the new message
 	var newmessage components.MessageToSend
-	newmessage.Text = message.Text
-	newmessage.Photo = message.Photo
+	newmessage.Text = text
+	newmessage.Photo = photo
 
 
 	// Inserts the message in the database

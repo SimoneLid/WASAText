@@ -1,6 +1,8 @@
 package database
 
 import (
+	"database/sql"
+	"errors"
 	"strings"
 
 	"github.com/mattn/go-sqlite3"
@@ -38,6 +40,9 @@ func (db *appdbimpl) GetIdFromUsername(username string) (int, error) {
 	var userid int
 	err := db.c.QueryRow(`SELECT UserId FROM User WHERE Username=?`,username).Scan(&userid)
 	if err != nil{
+		if errors.Is(err,sql.ErrNoRows){
+			return 0, ErrUserNotFound
+		}
 		return 0, err
 	}
 	return userid, err
@@ -49,6 +54,9 @@ func (db *appdbimpl) GetUsernameFromId(userid int) (string, error) {
 	var username string
 	err := db.c.QueryRow(`SELECT Username FROM User WHERE UserId=?`,userid).Scan(&username)
 	if err != nil{
+		if errors.Is(err,sql.ErrNoRows){
+			return "", ErrUserNotFound
+		}
 		return "", err
 	}
 	return username, err

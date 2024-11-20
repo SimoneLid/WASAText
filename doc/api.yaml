@@ -129,12 +129,13 @@ paths:
                 description: chats of an user
                 type: object
                 properties:
+                  username: {$ref: "#/components/schemas/Username"}
                   chatList:
-                    description: array of chats
+                    description: array of chats preview
                     type: array
                     minItems: 0
                     maxItems: 999
-                    items: {$ref: "#/components/schemas/Chat"}
+                    items: {$ref: "#/components/schemas/ChatPreview"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "500": {$ref: "#/components/responses/InternalServerError"}
                   
@@ -651,6 +652,16 @@ components:
         groupPhoto: {$ref: "#/components/schemas/Photo"}
         firstMessage: {$ref: "#/components/schemas/MessageToSend"}
 
+    ChatPreview:
+      title: chatpreview
+      description: preview of a chat
+      type: object
+      properties:
+        chatId: {$ref: "#/components/schemas/ChatId"}
+        groupName: {$ref: "#/components/schemas/GroupName"}
+        groupPhoto: {$ref: "#/components/schemas/Photo"}
+        lastMessage: {$ref: "#/components/schemas/MessagePreview"}
+
     Chat:
       title: chat
       description: info of a chat
@@ -675,6 +686,18 @@ components:
         text: {$ref: "#/components/schemas/TextData"}
         photo: {$ref: "#/components/schemas/Photo"}
 
+    MessagePreview:
+      title: messagepreview
+      description: preview of a message
+      type: object
+      properties:
+        messageId: {$ref: "#/components/schemas/MessageId"}
+        userId: {$ref: "#/components/schemas/UserId"}
+        chatId: {$ref: "#/components/schemas/ChatId"}
+        dateTime: {$ref: "#/components/schemas/DateTime"}
+        text: {$ref: "#/components/schemas/TextData"}
+        photo: {$ref: "#/components/schemas/Photo"}
+  
     Message:
       title: message
       description: info of a message
@@ -705,7 +728,7 @@ components:
       properties:
         messageId: {$ref: "#/components/schemas/MessageId"}
         userId: {$ref: "#/components/schemas/UserId"}
-        text: {$ref: "#/components/schemas/Emoji"}
+        emoji: {$ref: "#/components/schemas/Emoji"}
       
       
   securitySchemes:
