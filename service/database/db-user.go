@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"git.sapienzaapps.it/fantasticcoffee/fantastic-coffee-decaffeinated/service/api/components"
 	"github.com/mattn/go-sqlite3"
 )
 
@@ -117,4 +118,54 @@ func (db *appdbimpl) IsUserInChat(chatid int, userid int) (bool, error) {
 	}
 
 	return userinchat, err
+}
+
+func (db *appdbimpl) SetLastAccess(userid int) error {
+
+	_, err := db.c.Exec(`UPDATE User SET LastAccess=CURRENT_TIMESTAMP WHERE UserId=?`,userid)
+	if err != nil{
+		return err
+	}
+
+	return err
+}
+
+
+func (db *appdbimpl) SetLastRead(userid int, chatid int) error {
+
+	_, err := db.c.Exec(`UPDATE ChatUser SET LastRead=CURRENT_TIMESTAMP WHERE UserId=? AND ChatId=?`,userid,chatid)
+	if err != nil{
+		return err
+	}
+
+	return err
+}
+
+func (db *appdbimpl) SearchUsers(username string) ([]components.User, error) {
+	
+	userlist := []components.User{}
+	userrows, err := db.c.Query(`SELECT * FROM User WHERE Username LIKE ?||'%'`,username)
+	if err != nil{
+		return userlist, err
+	}
+	
+	defer userrows.Close()
+
+	// cicle for all the users
+	for userrows.Next(){
+		var user components.User
+		err = userrows.Scan(&user.UserId,&user.Username,&user.Photo,&user.LastAccess)
+		if err != nil{
+			return userlist, err
+		}
+
+		// append the user to userlist
+		userlist = append(userlist, user)
+	}
+
+	if userrows.Err() != nil{
+		return userlist, err
+	}
+	
+	return userlist, err
 }

@@ -329,3 +329,101 @@ func (db *appdbimpl) GetUserChats(userid int) ([]components.ChatPreview, error){
 
 	return chats, err
 }
+
+
+func (db *appdbimpl) GetChat(chatid int, userid int) (components.Chat, error){
+
+	var chat components.Chat
+
+	isgroup, err := db.IsGroup(chatid)
+	if err != nil{
+		return chat, err
+	}
+
+	// if the chat is a group takes the info, if not the name and group are equal to the other user of the chat
+	if isgroup{
+		err = db.c.QueryRow(`SELECT * FROM Chat WHERE ChatId=?`,chatid).Scan(&chat.ChatId,&chat.GroupName,&chat.GroupPhoto)
+	}else{
+		err = db.c.QueryRow(`SELECT c.ChatId, u.Username, u.Photo 
+		FROM Chat c JOIN ChatUser cu ON c.ChatId=cu.ChatId JOIN User u ON cu.UserId=u.UserId
+		WHERE c.ChatId=? AND u.UserId<>?`,chatid,userid).Scan(&chat.ChatId,&chat.GroupName,&chat.GroupPhoto)
+	}
+
+	if err != nil{
+		return chat, err
+	}
+
+	// gets all the message in the chat
+	messagerows, err := db.c.Query(`SELECT * FROM Message WHERE ChatId=?`, chatid)
+	if err != nil{
+		return chat, err
+	}
+	
+
+	defer messagerows.Close()
+
+	// cicle for all the message
+	for messagerows.Next(){
+		var message components.Message
+		var text sql.NullString
+		var photo sql.NullString
+		err = messagerows.Scan(&message.MessageId,&message.ChatId,&message.UserId,&text,&photo,&message.IsForwarded,&message.TimeStamp)
+		if err != nil{
+			return chat, err
+		}
+
+		if text.Valid{
+			message.Text=text.String
+		}
+		if photo.Valid{
+			message.Photo=photo.String
+		}
+
+		// check if the message is received by all the users in the chat
+		message.IsAllReceived, err = db.IsAllReceived(message.MessageId, userid)
+		if err != nil{
+			return chat, err
+		}
+
+		// check if the message is read by all the users in the chat
+		message.IsAllRead, err = db.IsAllRead(message.MessageId, userid)
+		if err != nil{
+			return chat, err
+		}
+
+
+		message.CommentList = []components.Comment{}
+		// gets all the comment of the message
+		commentrows, err := db.c.Query(`SELECT * FROM Comment WHERE MessageId=?`, message.MessageId)
+		if err != nil{
+			return chat, err
+		}
+
+		defer commentrows.Close()
+
+		// cicle for all the comments
+		for commentrows.Next(){
+			var comment components.Comment
+			err = commentrows.Scan(&comment.MessageId,&comment.UserId,&comment.Emoji)
+			if err != nil{
+				return chat, err
+			}
+
+			// append the comment to the message
+			message.CommentList = append(message.CommentList, comment)
+		}
+
+		if commentrows.Err() != nil{
+			return chat, err
+		}
+
+		// append the message to the chat
+		chat.MessageList = append(chat.MessageList, message)
+	}
+
+	if messagerows.Err() != nil{
+		return chat, err
+	}
+
+	return chat, err
+}

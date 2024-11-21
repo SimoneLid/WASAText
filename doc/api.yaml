@@ -346,7 +346,7 @@ paths:
       tags: ["user"]
       summary: search user by username
       description: |-
-        Returns al the users with username starting with the query parameter
+        Returns all the users with username starting with the query parameter
       operationId: searchUsers
       responses:
         "200":
@@ -357,7 +357,12 @@ paths:
                 type: object
                 description: username starting with the search parameter
                 properties:
-                  usernamelist: {$ref: "#/components/schemas/UsernameList"}
+                  userlist: 
+                    type: array
+                    description: list of user matching username
+                    minItems: 0
+                    maxItems: 999
+                    items: {$ref: "#/components/schemas/User"}
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "404": {$ref: "#/components/responses/NotFound"}
@@ -554,7 +559,7 @@ components:
         type: string
         example: Simone
         pattern: '.*'
-        minLength: 1
+        minLength: 0
         maxLength: 16
       
       
@@ -641,6 +646,14 @@ components:
       pattern: ".*"
       minLength: 1
       maxLength: 1
+    
+    User:
+      title: user
+      description: info of a user
+      type: object
+      properties:
+        userId: {$ref: "#/components/schemas/UserId"}
+        username: {$ref: "#/components/schemas/Username"}
     
     ChatCreation:
       title: chatcreation

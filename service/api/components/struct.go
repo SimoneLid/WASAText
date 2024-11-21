@@ -16,6 +16,10 @@ type UserId struct{
 	UserId int `json:"userid"`
 }
 
+type UserList struct{
+	UserList []User `json:"userlist"`
+}
+
 type User struct{
 	UserId int `json:"userid"`
 	Username string `json:"username"`
@@ -28,9 +32,11 @@ type ChatMessId struct{
 	MessageId int `json:"messageid"`
 }
 
-type AllChat struct{
-	Username string `json:"username"`
-	ChatList []ChatPreview `json:"chatlist"`
+type Chat struct{
+	ChatId int `json:"chatid"`
+	GroupName string `json:"groupname"`
+	GroupPhoto string `json:"groupphoto"`
+	MessageList []Message `json:"messagelist"`
 }
 
 type ChatCreation struct{
@@ -73,6 +79,8 @@ type Message struct{
 	Photo string `json:"photo"`
 	IsForwarded bool `json:"isforwarded"`
 	TimeStamp string `json:"timestamp"`
+	IsAllReceived bool `json:"isallreceived"`
+	IsAllRead bool `json:"isallread"`
 	CommentList []Comment `json:"commentlist"`
 }
 

@@ -110,3 +110,29 @@ func (db *appdbimpl) GetUserFromMessage(messageid int) (int, error) {
 
 	return userid, err
 }
+
+func (db *appdbimpl) IsAllReceived(messageid int, userid int) (bool, error) {
+
+	allreceived := false
+	err := db.c.QueryRow(`SELECT NOT EXISTS(SELECT *
+	FROM Message m JOIN ChatUser cu ON m.ChatId=cu.ChatId JOIN User u ON cu.UserId=u.UserId
+	WHERE m.MessageId=? AND m.TimeStamp>u.LastAccess AND u.UserId<>?)`,messageid, userid).Scan(&allreceived)
+	if err != nil{
+		return false, err
+	}
+
+	return allreceived, err
+}
+
+func (db *appdbimpl) IsAllRead(messageid int, userid int) (bool, error) {
+
+	allread := false
+	err := db.c.QueryRow(`SELECT NOT EXISTS(SELECT *
+	FROM Message m JOIN ChatUser cu ON m.ChatId=cu.ChatId
+	WHERE m.MessageId=? AND cu.UserId<>? AND (m.TimeStamp>cu.LastRead OR cu.LastRead IS NULL))`,messageid, userid).Scan(&allread)
+	if err != nil{
+		return false, err
+	}
+
+	return allread, err
+}

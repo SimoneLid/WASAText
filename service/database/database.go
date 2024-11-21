@@ -47,6 +47,9 @@ type AppDatabase interface {
 	IsUserInChat(chatid int, userid int) (bool, error)
 	GetUsernameFromId(userid int) (string, error)
 	GetIdFromUsername(username string) (int, error)
+	SetLastAccess(userid int) error
+	SetLastRead(userid int, chatid int) error
+	SearchUsers(username string) ([]components.User, error)
 
 	// Chat
 	InsertChat(chat components.ChatCreation, userperformingid int) (int, int, error)
@@ -56,6 +59,7 @@ type AppDatabase interface {
 	ChangeGroupName(chatid int, groupname string) error
 	ChangeGroupPhoto(chatid int, photo string) error
 	GetUserChats(userid int) ([]components.ChatPreview, error)
+	GetChat(chatid int, userid int) (components.Chat, error)
 
 	// Message
 	InsertMessage(message components.MessageToSend, isforwarded bool, chatid int, userperformingid int) (int, error)
@@ -63,6 +67,8 @@ type AppDatabase interface {
 	IsMessageInChat(chatid int, messageid int) (bool, error)
 	DeleteMessage(messageid int, chatid int) error
 	GetUserFromMessage(messageid int) (int, error)
+	IsAllReceived(messageid int, userid int) (bool, error)
+	IsAllRead(messageid int, userid int) (bool, error)
 
 	// Comment
 	InsertComment(messageid int, userid int, emoji string) error

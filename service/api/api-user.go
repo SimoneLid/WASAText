@@ -54,6 +54,9 @@ func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, ps http
 		http.Error(w,err.Error(),http.StatusBadRequest) // 400
 		return
 	}
+
+	// set the header of the response
+	w.WriteHeader(http.StatusNoContent) // 204
 }
 
 
@@ -99,4 +102,28 @@ func (rt *_router) setMyPhoto(w http.ResponseWriter, r *http.Request, ps httprou
 		http.Error(w,err.Error(),http.StatusBadRequest) // 400
 		return
 	}
+
+	// set the header of the response
+	w.WriteHeader(http.StatusNoContent) // 204
+}
+
+// get /users
+func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
+	
+	// Take the username to search from the query
+	username := r.URL.Query().Get("username")
+	
+	// gets the users with username that starts equal to the username in input
+	var userlist components.UserList
+	var err error
+	userlist.UserList, err = rt.db.SearchUsers(username)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+	
+	// set the header of the response
+	w.Header().Set("Content-Type","application/json")
+	w.WriteHeader(http.StatusOK) // 200
+	_ = json.NewEncoder(w).Encode(userlist)
 }

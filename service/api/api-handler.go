@@ -12,6 +12,7 @@ func (rt *_router) Handler() http.Handler {
 	// User routes
 	rt.router.PUT("/users/:user_id/name", rt.wrap(rt.setMyUserName))
 	rt.router.PUT("/users/:user_id/photo", rt.wrap(rt.setMyPhoto))
+	rt.router.GET("/users",rt.wrap(rt.searchUsers))
 
 	// Chats routes
 	rt.router.POST("/newchat", rt.wrap(rt.createChat))
@@ -20,6 +21,7 @@ func (rt *_router) Handler() http.Handler {
 	rt.router.PUT("/chats/:chat_id/name", rt.wrap(rt.setGroupName))
 	rt.router.PUT("/chats/:chat_id/photo", rt.wrap(rt.setGroupPhoto))
 	rt.router.GET("/chats",rt.wrap(rt.getMyConversations))
+	rt.router.GET("/chats/:chat_id",rt.wrap(rt.getConversation))
 
 
 	// Message routes

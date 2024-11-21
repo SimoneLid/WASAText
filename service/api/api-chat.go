@@ -346,24 +346,78 @@ func (rt *_router) getMyConversations(w http.ResponseWriter, r *http.Request, ps
 		return
 	}
 
-	var chats components.AllChat
-	// takes the username of the user requesting the chats from db
-	chats.Username, err = rt.db.GetUsernameFromId(userperformingid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
-		return
-	}
+	var chats []components.ChatPreview
 	// takes all the chat of the user from db
-	chats.ChatList, err = rt.db.GetUserChats(userperformingid)
+	chats, err = rt.db.GetUserChats(userperformingid)
 	if err != nil{
 		http.Error(w,err.Error(),http.StatusBadRequest) // 400
 		return
 	}
 
+	// sets the LastAccess fr the user
+	err = rt.db.SetLastAccess(userperformingid)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
 
 	// set the header of the response
 	w.Header().Set("Content-Type","application/json")
 	w.WriteHeader(http.StatusOK) // 200
 	_ = json.NewEncoder(w).Encode(chats)
+
+}
+
+// get /chats/{chat_id}
+func (rt *_router) getConversation(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
+
+	// take the user performing the action from the bearer
+	userperformingid, err := strconv.Atoi(r.Header.Get("Authorization")[7:])
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	// take the chat id from the URL
+	chatid, err := strconv.Atoi(ps.ByName("chat_id"))
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	// check if the user performing the action is in the chat
+	userinchat, err := rt.db.IsUserInChat(chatid, userperformingid)
+	if err != nil{
+		if errors.Is(err, database.ErrChatNotFound){
+			http.Error(w,err.Error(),http.StatusBadRequest) // 400
+			return
+		}
+		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
+		return
+	}
+	if !userinchat{
+		http.Error(w,database.ErrUserNotInChat.Error(),http.StatusUnauthorized) // 401
+		return
+	}
+
+	var chat components.Chat
+	// takes the chat from the db
+	chat, err = rt.db.GetChat(chatid, userperformingid)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	// sets the LastRead of the chat for the user
+	err = rt.db.SetLastRead(userperformingid, chatid)
+	if err != nil{
+		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+		return
+	}
+
+	// set the header of the response
+	w.Header().Set("Content-Type","application/json")
+	w.WriteHeader(http.StatusOK) // 200
+	_ = json.NewEncoder(w).Encode(chat)
 
 }
