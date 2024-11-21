@@ -503,8 +503,8 @@ paths:
       tags: ["comment"]
       summary: delete comment to a message
       description: |-
-        The user performing the action delete the comment associated to comment_id 
-        of the message associated with message_id
+        The user performing the action delete the comment to the message
+        associated with message_id
       operationId: uncommentMessage
       responses:
         "204":

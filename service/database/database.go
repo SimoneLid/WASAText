@@ -178,7 +178,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 
 
 
-
+	/*
 	// Inizio test
 
 	// Insert in User
@@ -232,7 +232,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, fmt.Errorf("error inserting into Message: %w", err)
 	}
 
-	/*
+	
 	// Inserimenti per la tabella Comment
 	_, err = db.Exec(`
 		INSERT INTO Comment (MessageId, UserId, Emoji) VALUES (1, 2, '👍');
@@ -243,9 +243,6 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, fmt.Errorf("error inserting into Comment: %w", err)
 	}
 
-	
-
-	fmt.Println("Data inserted successfully!")
 	*/
 
 
