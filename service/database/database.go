@@ -140,7 +140,8 @@ func New(db *sql.DB) (AppDatabase, error) {
 					FOREIGN KEY(UserId) REFERENCES User(UserId)
 					);`
 
-	_, err := db.Exec("PRAGMA foreign_keys=ON")
+	var err error
+	_, err = db.Exec("PRAGMA foreign_keys=ON")
 	if err != nil {
 		return nil, err
 	}
@@ -175,75 +176,6 @@ func New(db *sql.DB) (AppDatabase, error) {
 			return nil, fmt.Errorf("error creating database structure: %w", err)
 	}
 
-
-
-
-	/*
-	// Inizio test
-
-	// Insert in User
-	_, err = db.Exec(`
-		INSERT OR IGNORE INTO User (Username, Photo, LastAccess) VALUES ('Sim', 'sim_photo.jpg', '2024-11-01 08:30:00');
-		INSERT OR IGNORE INTO User (Username, Photo) VALUES ('Ivan','photo.png');
-		INSERT OR IGNORE INTO User (Username, Photo) VALUES ('Marco','photo.png');
-	`)
-	if err != nil {
-		return nil, fmt.Errorf("error inserting into User: %w", err)
-	}
-
-	
-	// Insert in Chat
-	_, err = db.Exec(`
-		INSERT OR IGNORE INTO Chat (ChatId, ChatName, ChatPhoto) VALUES (1, NULL, NULL);
-		INSERT OR IGNORE INTO Chat (ChatId, ChatName, ChatPhoto) VALUES (2, 'Group Chat 1', 'group1_photo.jpg');
-		INSERT OR IGNORE INTO Chat (ChatId, ChatName, ChatPhoto) VALUES (3, 'Group Chat 2', 'group2_photo.jpg');
-	`)
-	if err != nil {
-		return nil, fmt.Errorf("error inserting into Chat: %w", err)
-	}
-
-
-	// Insert in ChatUser
-	_, err = db.Exec(`
-		INSERT OR IGNORE INTO ChatUser (UserId, ChatId, TimeAdded) VALUES (1, 1, '2024-11-01 08:30:00');
-		INSERT OR IGNORE INTO ChatUser (UserId, ChatId) VALUES (2, 1);
-		INSERT OR IGNORE INTO ChatUser (UserId, ChatId) VALUES (1, 2);
-		INSERT OR IGNORE INTO ChatUser (UserId, ChatId) VALUES (2, 2);
-		INSERT OR IGNORE INTO ChatUser (UserId, ChatId) VALUES (1, 3);
-		INSERT OR IGNORE INTO ChatUser (UserId, ChatId) VALUES (3, 3);
-	`)
-	if err != nil {
-		return nil, fmt.Errorf("error inserting into ChatUser: %w", err)
-	}
-
-	
-	// Inserimenti per la tabella Message
-	_, err = db.Exec(`
-		INSERT OR IGNORE INTO Message (MessageId, ChatId, UserId, Text, Photo, IsForwarded) 
-		VALUES (1, 1, 1, 'Mess Prova 1', NULL, 0);
-
-		INSERT OR IGNORE INTO Message (MessageId, ChatId, UserId, Text, Photo, IsForwarded) 
-		VALUES (2, 2, 2, NULL, 'photo1.jpg', 1);
-
-		INSERT OR IGNORE INTO Message (MessageId, ChatId, UserId, Text, Photo, IsForwarded) 
-		VALUES (3, 3, 3, 'Welcome to the group chat!', NULL, 0);
-	`)
-	if err != nil {
-		return nil, fmt.Errorf("error inserting into Message: %w", err)
-	}
-
-	
-	// Inserimenti per la tabella Comment
-	_, err = db.Exec(`
-		INSERT INTO Comment (MessageId, UserId, Emoji) VALUES (1, 2, '👍');
-		INSERT INTO Comment (MessageId, UserId, Emoji) VALUES (1, 3, '😂');
-		INSERT INTO Comment (MessageId, UserId, Emoji) VALUES (2, 1, '😍');
-	`)
-	if err != nil {
-		return nil, fmt.Errorf("error inserting into Comment: %w", err)
-	}
-
-	*/
 
 
 	return &appdbimpl{

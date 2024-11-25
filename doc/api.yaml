@@ -491,12 +491,6 @@ paths:
         "404": {$ref: "#/components/responses/NotFound"}
         "500": {$ref: "#/components/responses/InternalServerError"}
   
-  
-  /chats/{chat_id}/messages/{message_id}/comments/{user_id}:
-    parameters:
-    - $ref: "#/components/parameters/ChatId"
-    - $ref: "#/components/parameters/MessageId"
-    - $ref: "#/components/parameters/UserId"
     delete:
       security:
         - bearerAuth: []

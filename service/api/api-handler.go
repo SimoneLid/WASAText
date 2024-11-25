@@ -31,7 +31,7 @@ func (rt *_router) Handler() http.Handler {
 
 	// Comment routes
 	rt.router.PUT("/chats/:chat_id/messages/:message_id/comments",rt.wrap(rt.commentMessage))
-	rt.router.DELETE("/chats/:chat_id/messages/:message_id/comments/:user_id",rt.wrap(rt.uncommentMessage))
+	rt.router.DELETE("/chats/:chat_id/messages/:message_id/comments",rt.wrap(rt.uncommentMessage))
 
 	// Special routes
 	rt.router.GET("/liveness", rt.liveness)

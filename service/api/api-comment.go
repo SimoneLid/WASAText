@@ -107,19 +107,6 @@ func (rt *_router) uncommentMessage(w http.ResponseWriter, r *http.Request, ps h
 		return
 	}
 
-	// take the user id from the URL
-	userid, err := strconv.Atoi(ps.ByName("user_id"))
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
-		return
-	}
-
-	// check if the user performing the action is the same of the user deleting comment
-	if userperformingid != userid{
-		http.Error(w,database.ErrDifferentUser.Error(),http.StatusUnauthorized) // 401
-		return
-	}
-
 	// check if the message is in the chat
 	messageinchat, err := rt.db.IsMessageInChat(chatid, messageid)
 	if err != nil{
@@ -145,7 +132,7 @@ func (rt *_router) uncommentMessage(w http.ResponseWriter, r *http.Request, ps h
 
 
 	// deletes the comment if exists
-	err = rt.db.DeleteComment(messageid, userid)
+	err = rt.db.DeleteComment(messageid, userperformingid)
 	if err != nil{
 		http.Error(w,err.Error(),http.StatusBadRequest) // 400
 		return
