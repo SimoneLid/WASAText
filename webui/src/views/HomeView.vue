@@ -15,7 +15,10 @@
                 changeusernameshown: false,
                 changedinfo: false,
                 newusername : null,
-                newuserphoto: null
+                newuserphoto: null,
+
+                // for chats preview
+                chats: []
             }
         },
         methods: {
@@ -23,6 +26,7 @@
                 // Check if the click is outside the search box to search users
                 if (this.$refs.boxsearchuser && !this.$refs.boxsearchuser.contains(event.target)) {
                     this.users = [];
+                    this.searcheduser = null;
                 }
             },
             async searchUser(searcheduser) {
@@ -36,9 +40,8 @@
                         }
                     });
                 } catch (e) {
-                    this.errormsg = e.toString();
+                    this.errormsg = e.response.status + ": " + e.response.data;;
                 }
-                this.loading = false;
             },
             changePhotoFileSelect(){
                 const file = this.$refs.changeimageInput.files[0];
@@ -82,13 +85,38 @@
                 }
                 this.newusername = null;
                 this.newuserphoto = null;
-                if (changedinfo){
+                if (this.changedinfo){
                     this.changeusernameshown = false;
+                    this.errormsg = null;
+                }
+            },
+            async buildChatPreview(){
+                this.errormsg = null;
+                this.chats=[];
+                try {
+                    let response = await this.$axios.get("/chats",{headers:{"Authorization": `Bearer ${this.userid}`}});
+                    response.data.forEach(chat => {
+                        if (chat.lastmessage.text.length>20){
+                            chat.lastmessage.text = chat.lastmessage.text.slice(0,20)+"...";
+                        }
+                        if (chat.lastmessage.photo.length>0 && chat.lastmessage.text.length===0){
+                            console.log("Testo 0");
+                            chat.lastmessage.text="Photo";
+                        }
+                        if (chat.lastmessage.username==this.username){
+                            chat.lastmessage.username="You";
+                        }
+                        chat.lastmessage.timestamp = chat.lastmessage.timestamp.slice(11,16);
+                        this.chats.push(chat);
+                    });
+                } catch (e) {
+                    this.errormsg = e.response.status + ": " + e.response.data;;
                 }
             }
         },
         mounted(){
             document.addEventListener('click', this.handleClickOutside);
+            this.buildChatPreview();
         }
     }
 </script>
@@ -117,20 +145,48 @@
     </div>
 
 
-    <div class="box-container">
-        <!-- Box to change username and photo -->
-        <div v-if="changeusernameshown" class="blurred-box">
-            Enter a new username:
-            <input class="new-username" v-model="newusername" placeholder="new username">
-            <input type="file" accept="image/*" ref="changeimageInput" style="display: none;" @change="changePhotoFileSelect"/>
-            <div v-if="newuserphoto" style="display: flex; flex-direction: column; align-items: center;">
-                Preview profile pic:
-                <img class="img-circular" :src="newuserphoto" style="width: 64px; height: 64px; background-color: #695d5d;"/>
+    <div class="main-screen" style="display: flex;">
+        <!-- sidebar with chats -->
+        <div class="sidebar-chats" style="position: absolute; left: 0%">
+            <div v-if="chats.length>0" class="chats-dropdown">
+                <ul>
+                    <li v-for="chat in chats":key="chat.userid">
+                        <div class="chatpreview">
+                            <div class="chatpreviewname">
+                                <img class="img-circular" :src="chat.groupphoto" style="width: 32px; height: 32px;">
+                                <h3 style="margin-left: 10px; margin-bottom: 0;">{{chat.groupname}}</h3>
+                                <div class="timepreview">{{chat.lastmessage.timestamp}}</div>
+                            </div>
+                            <div class="messagepreview">
+                                <b>{{chat.lastmessage.username}}: </b>
+                                <img v-if="chat.lastmessage.photo.length>0" src="/assets/photo-icon.svg" style="height: 24px; width: 24px; margin-right: 10px; margin-left: 5px;">
+                                &nbsp;{{chat.lastmessage.text}}
+                                <img class="checkmark" v-if="chat.lastmessage.isallread && chat.lastmessage.userid==this.userid" src="/assets/double-check.svg" style="height: 24px; width: 24px; color: blue;">
+                                <img class="checkmark" v-else-if="chat.lastmessage.isallreceived && chat.lastmessage.userid==this.userid" src="/assets/double-check.svg" style="height: 24px; width: 24px;">
+                                <img class="checkmark" v-else-if="chat.lastmessage.userid==this.userid" src="/assets/single-check.svg" style="height: 24px; width: 24px;">
+                            </div>
+                        </div>
+                    </li>
+                </ul>
             </div>
-            <button @click="changePhotoButton">Select Photo</button>
-            <button class="change-button" @click="changeUsernamePhoto">Change</button>
-            <button class="cancel-button" @click="resetChangeUsernamePrompt">Cancel</button>
-            <ErrorMsg v-if="errormsg" :msg="errormsg"></ErrorMsg>
+        </div>
+
+
+        <div class="box-container">
+            <!-- Box to change username and photo -->
+            <div v-if="changeusernameshown" class="blurred-box">
+                Enter a new username:
+                <input class="new-username" v-model="newusername" placeholder="new username">
+                <input type="file" accept="image/*" ref="changeimageInput" style="display: none;" @change="changePhotoFileSelect"/>
+                <div v-if="newuserphoto" style="display: flex; flex-direction: column; align-items: center;">
+                    Preview profile pic:
+                    <img class="img-circular" :src="newuserphoto" style="width: 64px; height: 64px; background-color: #695d5d;"/>
+                </div>
+                <button @click="changePhotoButton">Select Photo</button>
+                <button class="change-button" @click="changeUsernamePhoto">Confirm</button>
+                <button class="cancel-button" @click="resetChangeUsernamePrompt">Cancel</button>
+                <ErrorMsg v-if="errormsg" :msg="errormsg"></ErrorMsg>
+            </div>
         </div>
     </div>
 </template>
@@ -153,7 +209,7 @@ body {
         position: relative;
         display: flex;
         align-items: center;
-        height: 60px;
+        height: 10vh;
         width: 100%;
     }
 
@@ -215,7 +271,7 @@ body {
         justify-content: center;
         align-items: center;
         width: 100%;
-        height: calc(100vh - 60px);  /* max heigth (825) minus navbar (60) */
+        height: 90vh;
     }
     .blurred-box {
         display: flex;
@@ -244,5 +300,64 @@ body {
         top: 90%;
         left: 20%;
         transform: translate(-50%, -50%);
+    }
+
+    /* Sidebar */
+    .sidebar-chats{
+        background-color: rgb(38, 38, 44);
+        height: 90vh;
+        width: 20vw;
+    }
+    .chats-dropdown {
+        background-color: #332a2a;
+        width: 100%;
+    }
+    .chats-dropdown ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        color: whitesmoke;
+    }
+
+    .chats-dropdown li {
+        padding: 10px;
+        cursor: pointer;
+        height: 80px;
+        display: flex;
+        align-items: center;
+    }
+
+    .chats-dropdown li:hover {
+        background-color: #695d5d;
+    }
+
+    .chatpreview{
+        width: 100%;
+    }
+    .chatpreviewname{
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        position: relative;
+        width: 100%;
+    }
+    .messagepreview{
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        position: relative;
+        width: 100%;
+    }
+    .checkmark{
+        position: absolute;
+        left: 95%;
+        top: 50%;
+        transform: translate(-50%,-50%);
+    }
+    .timepreview{
+        position: absolute;
+        left: 95%;
+        top: 50%;
+        transform: translate(-50%,-50%);
     }
 </style>

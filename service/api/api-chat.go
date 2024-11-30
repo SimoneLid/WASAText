@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"git.sapienzaapps.it/fantasticcoffee/fantastic-coffee-decaffeinated/service/api/components"
@@ -353,6 +354,11 @@ func (rt *_router) getMyConversations(w http.ResponseWriter, r *http.Request, ps
 		http.Error(w,err.Error(),http.StatusBadRequest) // 400
 		return
 	}
+
+	// order the chats based on timestamp of the last message
+	sort.Slice(chats, func(i, j int) bool {
+		return chats[i].LastMessage.TimeStamp > chats[j].LastMessage.TimeStamp
+	})
 
 	// sets the LastAccess fr the user
 	err = rt.db.SetLastAccess(userperformingid)

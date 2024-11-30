@@ -67,15 +67,19 @@ type MessagePreview struct{
 	MessageId int `json:"messageid"`
 	ChatId int `json:"chatid"`
 	UserId int `json:"userid"`
+	Username string `json:"username"`
 	Text string `json:"text"`
 	Photo string `json:"photo"`
 	TimeStamp string `json:"timestamp"`
+	IsAllReceived bool `json:"isallreceived"`
+	IsAllRead bool `json:"isallread"`
 }
 
 type Message struct{
 	MessageId int `json:"messageid"`
 	ChatId int `json:"chatid"`
 	UserId int `json:"userid"`
+	Username string `json:"username"`
 	Text string `json:"text"`
 	Photo string `json:"photo"`
 	IsForwarded bool `json:"isforwarded"`

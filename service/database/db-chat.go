@@ -9,6 +9,10 @@ import (
 
 func (db *appdbimpl) InsertChat(chat components.ChatCreation, userperformingid int) (int, int, error) {
 	
+	// default photo
+	default_photo := "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCg0KPCFET0NUWVBFIHN2ZyBQVUJMSUMgIi0vL1czQy8vRFREIFNWRyAxLjEvL0VOIiAiaHR0cDovL3d3dy53My5vcmcvR3JhcGhpY3MvU1ZHLzEuMS9EVEQvc3ZnMTEuZHRkIj4NCjwhLS0gVXBsb2FkZWQgdG86IFNWRyBSZXBvLCB3d3cuc3ZncmVwby5jb20sIEdlbmVyYXRvcjogU1ZHIFJlcG8gTWl4ZXIgVG9vbHMgLS0+CjxzdmcgZmlsbD0iIzAwMDAwMCIgdmVyc2lvbj0iMS4xIiBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgDQoJIHdpZHRoPSI4MDBweCIgaGVpZ2h0PSI4MDBweCIgdmlld0JveD0iNzk2IDc5NiAyMDAgMjAwIiBlbmFibGUtYmFja2dyb3VuZD0ibmV3IDc5NiA3OTYgMjAwIDIwMCIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+DQo8cGF0aCBkPSJNODk2LDc5NmMtNTUuMTQsMC05OS45OTksNDQuODYtOTkuOTk5LDEwMGMwLDU1LjE0MSw0NC44NTksMTAwLDk5Ljk5OSwxMDBjNTUuMTQxLDAsOTkuOTk5LTQ0Ljg1OSw5OS45OTktMTAwDQoJQzk5NS45OTksODQwLjg2LDk1MS4xNDEsNzk2LDg5Niw3OTZ6IE04OTYuNjM5LDgyNy40MjVjMjAuNTM4LDAsMzcuMTg5LDE5LjY2LDM3LjE4OSw0My45MjFjMCwyNC4yNTctMTYuNjUxLDQzLjkyNC0zNy4xODksNDMuOTI0DQoJcy0zNy4xODctMTkuNjY3LTM3LjE4Ny00My45MjRDODU5LjQ1Miw4NDcuMDg1LDg3Ni4xMDEsODI3LjQyNSw4OTYuNjM5LDgyNy40MjV6IE04OTYsOTgzLjg2DQoJYy0yNC42OTIsMC00Ny4wMzgtMTAuMjM5LTYzLjAxNi0yNi42OTVjLTIuMjY2LTIuMzM1LTIuOTg0LTUuNzc1LTEuODQtOC44MmM1LjQ3LTE0LjU1NiwxNS43MTgtMjYuNzYyLDI4LjgxNy0zNC43NjENCgljMi44MjgtMS43MjgsNi40NDktMS4zOTMsOC45MSwwLjgyOGM3LjcwNiw2Ljk1OCwxNy4zMTYsMTEuMTE0LDI3Ljc2NywxMS4xMTRjMTAuMjQ5LDAsMTkuNjktNC4wMDEsMjcuMzE4LTEwLjcxOQ0KCWMyLjQ4OC0yLjE5MSw2LjEyOC0yLjQ3OSw4LjkzMi0wLjcxMWMxMi42OTcsOC4wMDQsMjIuNjE4LDIwLjAwNSwyNy45NjcsMzQuMjUzYzEuMTQ0LDMuMDQ3LDAuNDI1LDYuNDgyLTEuODQyLDguODE3DQoJQzk0My4wMzcsOTczLjYyMSw5MjAuNjkxLDk4My44Niw4OTYsOTgzLjg2eiIvPg0KPC9zdmc+"
+
+
 	// check if is a group
 	var groupname sql.NullString
 	var groupphoto sql.NullString
@@ -21,7 +25,7 @@ func (db *appdbimpl) InsertChat(chat components.ChatCreation, userperformingid i
 		groupname.String=chat.GroupName
 		// set the default image if not specified
 		if len(chat.GroupPhoto)==0{
-			groupphoto.String="prova.png"
+			groupphoto.String=default_photo
 		}else{
 			groupphoto.String=chat.GroupPhoto
 		}
@@ -253,8 +257,8 @@ func (db *appdbimpl) GetUserChats(userid int) ([]components.ChatPreview, error){
 	chats := []components.ChatPreview{}
 
 	// search all the groups where the user is with the last message
-	rowsgroup, err := db.c.Query(`SELECT c.ChatId, c.ChatName, c.ChatPhoto, m.MessageId, m.ChatId, m.UserId, m.Text, m.Photo, m.Timestamp
-	FROM ChatUser cu JOIN Chat c ON cu.ChatId = c.ChatId JOIN Message m ON m.ChatId = c.ChatId
+	rowsgroup, err := db.c.Query(`SELECT c.ChatId, c.ChatName, c.ChatPhoto, m.MessageId, m.ChatId, m.UserId, u.Username, m.Text, m.Photo, m.Timestamp
+	FROM ChatUser cu JOIN Chat c ON cu.ChatId = c.ChatId JOIN Message m ON m.ChatId = c.ChatId JOIN User u ON u.UserId = m.UserId 
 	WHERE cu.UserId = ? AND c.ChatName IS NOT NULL
     AND m.Timestamp = (SELECT MAX(Timestamp) FROM Message WHERE ChatId = c.ChatId)`,userid)
 	if err != nil{
@@ -270,7 +274,7 @@ func (db *appdbimpl) GetUserChats(userid int) ([]components.ChatPreview, error){
 		var currentchat components.ChatPreview
 		var text sql.NullString
 		var photo sql.NullString
-		err = rowsgroup.Scan(&currentchat.ChatId,&currentchat.GroupName,&currentchat.GroupPhoto,&currentchat.LastMessage.MessageId,&currentchat.LastMessage.ChatId,&currentchat.LastMessage.UserId,&text,&photo,&currentchat.LastMessage.TimeStamp)
+		err = rowsgroup.Scan(&currentchat.ChatId,&currentchat.GroupName,&currentchat.GroupPhoto,&currentchat.LastMessage.MessageId,&currentchat.LastMessage.ChatId,&currentchat.LastMessage.UserId,&currentchat.LastMessage.Username,&text,&photo,&currentchat.LastMessage.TimeStamp)
 		if err != nil{
 			return chats, err
 		}
@@ -283,6 +287,18 @@ func (db *appdbimpl) GetUserChats(userid int) ([]components.ChatPreview, error){
 			currentchat.LastMessage.Photo=photo.String
 		}
 
+		// check if the message is received by all the users in the chat
+		currentchat.LastMessage.IsAllReceived, err = db.IsAllReceived(currentchat.LastMessage.MessageId, userid)
+		if err != nil{
+			return chats, err
+		}
+
+		// check if the message is read by all the users in the chat
+		currentchat.LastMessage.IsAllRead, err = db.IsAllRead(currentchat.LastMessage.MessageId, userid)
+		if err != nil{
+			return chats, err
+		}
+
 		chats = append(chats, currentchat)
 	}
 
@@ -292,8 +308,8 @@ func (db *appdbimpl) GetUserChats(userid int) ([]components.ChatPreview, error){
 
 
 	// search all the chats where the user is with the last message, setting the name and photo equal to the other user of the chat
-	rowschat, err := db.c.Query(`SELECT c.ChatId, u.Username, u.Photo, m.MessageId, m.ChatId, m.UserId, m.Text, m.Photo, m.Timestamp
-	FROM ChatUser cu JOIN Chat c ON cu.ChatId = c.ChatId JOIN Message m ON m.ChatId = c.ChatId JOIN ChatUser cu2 ON cu2.ChatId=cu.ChatId JOIN User u ON cu2.UserId = u.UserId
+	rowschat, err := db.c.Query(`SELECT c.ChatId, u.Username, u.Photo, m.MessageId, m.ChatId, m.UserId, u2.Username, m.Text, m.Photo, m.Timestamp
+	FROM ChatUser cu JOIN Chat c ON cu.ChatId = c.ChatId JOIN Message m ON m.ChatId = c.ChatId JOIN ChatUser cu2 ON cu2.ChatId=cu.ChatId JOIN User u ON cu2.UserId = u.UserId JOIN User u2 ON u2.UserId = m.UserId
 	WHERE cu.UserId = ? AND c.ChatName IS NULL AND u.UserId<>cu.UserId
 	AND m.Timestamp = (SELECT MAX(Timestamp) FROM Message WHERE ChatId = c.ChatId)`,userid)
 	if err != nil{
@@ -307,7 +323,7 @@ func (db *appdbimpl) GetUserChats(userid int) ([]components.ChatPreview, error){
 		var currentchat components.ChatPreview
 		var text sql.NullString
 		var photo sql.NullString
-		err = rowschat.Scan(&currentchat.ChatId,&currentchat.GroupName,&currentchat.GroupPhoto,&currentchat.LastMessage.MessageId,&currentchat.LastMessage.ChatId,&currentchat.LastMessage.UserId,&text,&photo,&currentchat.LastMessage.TimeStamp)
+		err = rowschat.Scan(&currentchat.ChatId,&currentchat.GroupName,&currentchat.GroupPhoto,&currentchat.LastMessage.MessageId,&currentchat.LastMessage.ChatId,&currentchat.LastMessage.UserId,&currentchat.LastMessage.Username,&text,&photo,&currentchat.LastMessage.TimeStamp)
 		if err != nil{
 			return chats, err
 		}
@@ -318,6 +334,18 @@ func (db *appdbimpl) GetUserChats(userid int) ([]components.ChatPreview, error){
 		}
 		if photo.Valid{
 			currentchat.LastMessage.Photo=photo.String
+		}
+
+		// check if the message is received by all the users in the chat
+		currentchat.LastMessage.IsAllReceived, err = db.IsAllReceived(currentchat.LastMessage.MessageId, userid)
+		if err != nil{
+			return chats, err
+		}
+
+		// check if the message is read by all the users in the chat
+		currentchat.LastMessage.IsAllRead, err = db.IsAllRead(currentchat.LastMessage.MessageId, userid)
+		if err != nil{
+			return chats, err
 		}
 
 		chats = append(chats, currentchat)
