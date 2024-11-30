@@ -41,7 +41,7 @@ import (
 // AppDatabase is the high level interface for the DB
 type AppDatabase interface {
 	// User
-	InsertUser(username string ) (int, error)
+	InsertUser(username string ) (int, string, error)
 	ChangeUsername(userid int, username string) error
 	ChangeUserPhoto(userid int, photo string) error
 	IsUserInChat(chatid int, userid int) (bool, error)

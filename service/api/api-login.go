@@ -28,17 +28,19 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, ps httprouter
 	}
 	// Insert the user in the database
 	var id int
-	id, err = rt.db.InsertUser(username.Username)
+	var photo string
+	id, photo, err = rt.db.InsertUser(username.Username)
 	if err != nil{
 		http.Error(w,err.Error(),http.StatusBadRequest) // 400
 		return 
 	}
 	
-	var userid components.UserId
-	userid.UserId = id
+	var userinfo components.UserIdPhoto
+	userinfo.UserId = id
+	userinfo.Photo = photo
 
 	// set the header of the response
 	w.Header().Set("Content-Type","application/json")
 	w.WriteHeader(http.StatusCreated) // 201
-	_ = json.NewEncoder(w).Encode(userid)
+	_ = json.NewEncoder(w).Encode(userinfo)
 }

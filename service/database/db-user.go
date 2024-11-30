@@ -10,29 +10,31 @@ import (
 )
 
 
-func (db *appdbimpl) InsertUser(username string) (int, error) {
+func (db *appdbimpl) InsertUser(username string) (int, string, error) {
 
 	// check if the user already exists
 	var user_exists bool
 	err := db.c.QueryRow(`SELECT EXISTS(SELECT * FROM User WHERE Username=?)`,username).Scan(&user_exists)
 	if err != nil{
-		return 0, err
+		return 0, "", err
 	}
 
 	
 	var id int
+	var photo string
 	if !user_exists{
 		// insert the user in db if not exists, returning the id
 		err = db.c.QueryRow(`INSERT INTO User(Username,Photo) VALUES(?,"prova.png") RETURNING UserId`, username).Scan(&id)
+		photo = "prova.png"
 	}else{
 		// take the id of the already existing user
-		err = db.c.QueryRow(`SELECT UserId FROM User WHERE Username=?`,username).Scan(&id)
+		err = db.c.QueryRow(`SELECT UserId, Photo FROM User WHERE Username=?`,username).Scan(&id,&photo)
 	}
 	if err != nil{
-		return 0, err
+		return 0, "", err
 	}
 
-	return id, err
+	return id, photo, err
 }
 
 

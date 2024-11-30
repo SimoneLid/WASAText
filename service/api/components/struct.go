@@ -12,8 +12,9 @@ type UsernameList struct{
 	UsernameList []string `json:"usernamelist"`
 }
 
-type UserId struct{
+type UserIdPhoto struct{
 	UserId int `json:"userid"`
+	Photo string `json:"photo"`
 }
 
 type UserList struct{

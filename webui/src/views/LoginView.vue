@@ -3,7 +3,6 @@
         data: function() {
             return {
                 errormsg: null,
-                userid: null,
                 username: null
             }
         },
@@ -14,9 +13,10 @@
                     let response = await this.$axios.post("/session", {
                         username: this.username.trim()
                     });
-                    let userid = response.data;
+                    let userinfo = response.data;
                     localStorage.setItem('username', this.username);
-                    localStorage.setItem('userid', userid.userid);
+                    localStorage.setItem('userid', userinfo.userid);
+                    localStorage.setItem('userphoto',userinfo.photo);
                     this.$router.push({
                         path: "/chats"
                     });
@@ -33,7 +33,7 @@
         <div class="box">
             <h1>WasaText</h1>
             <input class="user-password" v-model="username" placeholder="username" @keyup.enter="login">
-            <button class="btn-hover" value="Login" @click="login">Login</button>
+            <button class="btn-hover" @click="login">Login</button>
             <ErrorMsg v-if="errormsg" :msg="errormsg"></ErrorMsg>
         </div>
     </div>

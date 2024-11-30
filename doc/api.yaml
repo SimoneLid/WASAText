@@ -71,9 +71,10 @@ paths:
             application/json:
               schema:
                 type: object
-                description: id of the user who made the login
+                description: id and photo of the user who made the login
                 properties:
                   userid: {$ref: "#/components/schemas/UserId"}
+                  photo: {$ref: "#/components/schemas/Photo"}
         "400": {$ref: "#/components/responses/BadRequest"}
         "500": {$ref: "#/components/responses/InternalServerError"}
         
