@@ -368,6 +368,8 @@ func (db *appdbimpl) GetChat(chatid int, userid int) (components.Chat, error){
 		return chat, err
 	}
 
+	chat.IsGroup = isgroup
+
 	// if the chat is a group takes the info, if not the name and group are equal to the other user of the chat
 	if isgroup{
 		err = db.c.QueryRow(`SELECT * FROM Chat WHERE ChatId=?`,chatid).Scan(&chat.ChatId,&chat.GroupName,&chat.GroupPhoto)
@@ -382,7 +384,9 @@ func (db *appdbimpl) GetChat(chatid int, userid int) (components.Chat, error){
 	}
 
 	// gets all the message in the chat
-	messagerows, err := db.c.Query(`SELECT * FROM Message WHERE ChatId=?`, chatid)
+	messagerows, err := db.c.Query(`SELECT m.MessageId,m.ChatId,m.UserId,u.Username,m.Text,m.Photo,m.IsForwarded,m.Timestamp
+	FROM Message m JOIN User u ON m.UserId = u.UserId
+	WHERE ChatId=?`, chatid)
 	if err != nil{
 		return chat, err
 	}
@@ -395,7 +399,7 @@ func (db *appdbimpl) GetChat(chatid int, userid int) (components.Chat, error){
 		var message components.Message
 		var text sql.NullString
 		var photo sql.NullString
-		err = messagerows.Scan(&message.MessageId,&message.ChatId,&message.UserId,&text,&photo,&message.IsForwarded,&message.TimeStamp)
+		err = messagerows.Scan(&message.MessageId,&message.ChatId,&message.UserId,&message.Username,&text,&photo,&message.IsForwarded,&message.TimeStamp)
 		if err != nil{
 			return chat, err
 		}

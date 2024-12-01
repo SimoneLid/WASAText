@@ -18,7 +18,13 @@
                 newuserphoto: null,
 
                 // for chats preview
-                chats: []
+                chats: [],
+
+                // for main chat
+                mainchat: null,
+                chatshown: false,
+                messagetext: null,
+                messagephoto: null
             }
         },
         methods: {
@@ -43,8 +49,10 @@
                     this.errormsg = e.response.status + ": " + e.response.data;;
                 }
             },
+
+            // Button to change the photo of user handler
             changePhotoFileSelect(){
-                const file = this.$refs.changeimageInput.files[0];
+                const file = this.$refs.changePhotoInput.files[0];
                 if (file) {
                     const reader = new FileReader();
                     reader.onload = (e) => {
@@ -54,12 +62,15 @@
                 }
             },
             changePhotoButton(){
-                this.$refs.changeimageInput.click();
+                this.$refs.changePhotoInput.click();
             },
+
+
             async resetChangeUsernamePrompt(){
                 this.newusername = null;
                 this.newuserphoto = null;
                 this.changeusernameshown = false;
+                this.errormsg = null;
             },
             async changeUsernamePhoto(){
                 this.errormsg = null;
@@ -112,7 +123,43 @@
                 } catch (e) {
                     this.errormsg = e.response.status + ": " + e.response.data;;
                 }
+            },
+            async buildMainChat(chatid){
+                this.errormsg = null;
+                this.mainchat = null;
+                try {
+                    let response = await this.$axios.get("/chats/"+chatid,{headers:{"Authorization": `Bearer ${this.userid}`}});
+                    this.mainchat=response.data;
+                    this.chatshown = true;
+                } catch (e) {
+                    this.errormsg = e.response.status + ": " + e.response.data;;
+                }
+            },
+            async closeMainChat(){
+                this.errormsg = null;
+                this.mainchat = null;
+                this.messagephoto = null;
+                this.messagetext = null;
+                this.chatshown = false;
+            },
+
+            // button to send a photo handler
+            sendPhotoFileSelect(){
+                const file = this.$refs.sendPhotoInput.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.messagephoto = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            },
+            sendPhotoButton(){
+                this.$refs.sendPhotoInput.click();
             }
+
+
+
         },
         mounted(){
             document.addEventListener('click', this.handleClickOutside);
@@ -123,61 +170,97 @@
 
 
 <template>
-    <div class="navbar-dark">
-        <!-- User photo, name and button to change those -->
-        <div class="user-info">
-            <img class="img-circular":src="userphoto" style="width: 32px; height: 32px; margin-left: 2px;"/>
-            <h3 style="margin-left: 10px; margin-bottom: 0; margin-right: 10px;">{{username}}</h3>
-            <img @click="changeusernameshown = true" src="/assets/pencil.svg" style="width: 16px; height: 16px; cursor: pointer; margin-right: 10px;"/>
-        </div>
-
-        <!-- Searchbox to search users -->
-        <div class="searchbox" ref="boxsearchuser">
-            <input class="searchbox-user" v-model="searcheduser" placeholder="username" @keyup.enter="searchUser(sercheduser)">
-            <div v-if="users.length>0" class="searched-dropdown">
-                <ul>
-                    <li v-for="user in users":key="user.username">
-                        {{user.username}}
-                    </li>
-                </ul>
+    <div class="all-screen">
+        <div class="navbar-dark">
+            <!-- User photo, name and button to change those -->
+            <div class="user-info">
+                <img class="img-circular":src="userphoto" style="width: 32px; height: 32px; margin-left: 2px;"/>
+                <h3 style="margin-left: 10px; margin-bottom: 0; margin-right: 10px;">{{username}}</h3>
+                <img @click="changeusernameshown = true" src="/assets/pencil.svg" style="width: 16px; height: 16px; cursor: pointer; margin-right: 10px;"/>
             </div>
-        </div>
-    </div>
 
-
-    <div class="main-screen" style="display: flex;">
-        <!-- sidebar with chats -->
-        <div class="sidebar-chats" style="position: absolute; left: 0%">
-            <div v-if="chats.length>0" class="chats-dropdown">
-                <ul>
-                    <li v-for="chat in chats":key="chat.userid">
-                        <div class="chatpreview">
-                            <div class="chatpreviewname">
-                                <img class="img-circular" :src="chat.groupphoto" style="width: 32px; height: 32px;">
-                                <h3 style="margin-left: 10px; margin-bottom: 0;">{{chat.groupname}}</h3>
-                                <div class="timepreview">{{chat.lastmessage.timestamp}}</div>
-                            </div>
-                            <div class="messagepreview">
-                                <b>{{chat.lastmessage.username}}: </b>
-                                <img v-if="chat.lastmessage.photo.length>0" src="/assets/photo-icon.svg" style="height: 24px; width: 24px; margin-right: 10px; margin-left: 5px;">
-                                &nbsp;{{chat.lastmessage.text}}
-                                <img class="checkmark" v-if="chat.lastmessage.isallread && chat.lastmessage.userid==this.userid" src="/assets/double-check.svg" style="height: 24px; width: 24px; color: blue;">
-                                <img class="checkmark" v-else-if="chat.lastmessage.isallreceived && chat.lastmessage.userid==this.userid" src="/assets/double-check.svg" style="height: 24px; width: 24px;">
-                                <img class="checkmark" v-else-if="chat.lastmessage.userid==this.userid" src="/assets/single-check.svg" style="height: 24px; width: 24px;">
-                            </div>
-                        </div>
-                    </li>
-                </ul>
+            <!-- Searchbox to search users -->
+            <div class="searchbox" ref="boxsearchuser">
+                <img src="/assets/search.svg" style="width: 32px; height: 32px; margin-top: 2px; margin-left: 2px;">
+                <div class="searchbox-userlist">
+                    <input class="searchbox-user" v-model="searcheduser" placeholder="Search user" @keyup.enter="searchUser(sercheduser)">
+                    <div v-if="users.length>0" class="searched-dropdown">
+                        <ul>
+                            <li v-for="user in users":key="user.username">
+                                {{user.username}}
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
 
 
-        <div class="box-container">
-            <!-- Box to change username and photo -->
-            <div v-if="changeusernameshown" class="blurred-box">
+        <div class="main-screen">
+            <!-- sidebar with chats -->
+            <div class="sidebar-chats">
+                <div v-if="chats.length>0" class="chats-dropdown">
+                    <ul>
+                        <li v-for="chat in chats":key="chat.userid" @click="buildMainChat(chat.chatid)">
+                            <div class="chatpreview">
+                                <div class="chatpreviewname">
+                                    <img class="img-circular" :src="chat.groupphoto" style="width: 32px; height: 32px;">
+                                    <h3 style="margin-left: 10px; margin-bottom: 0;">{{chat.groupname}}</h3>
+                                    <div class="timepreview">{{chat.lastmessage.timestamp}}</div>
+                                </div>
+                                <div class="messagepreview">
+                                    <b>{{chat.lastmessage.username}}: </b>
+                                    <img v-if="chat.lastmessage.photo.length>0" src="/assets/photo-icon.svg" style="height: 24px; width: 24px; margin-right: 10px; margin-left: 5px;">
+                                    &nbsp;{{chat.lastmessage.text}}
+                                    <img class="checkmark" v-if="chat.lastmessage.isallread && chat.lastmessage.userid==this.userid" src="/assets/double-check.svg" style="height: 24px; width: 24px; color: blue;">
+                                    <img class="checkmark" v-else-if="chat.lastmessage.isallreceived && chat.lastmessage.userid==this.userid" src="/assets/double-check.svg" style="height: 24px; width: 24px;">
+                                    <img class="checkmark" v-else-if="chat.lastmessage.userid==this.userid" src="/assets/single-check.svg" style="height: 24px; width: 24px;">
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Main chat screen -->
+            <div class="main-chat" v-if="chatshown">
+                <div class="topbar-chat">
+                    <img class="backarrow" src="/assets/back-arrow.svg" style="width: 32px; height: 32px; cursor: pointer;" @click="closeMainChat"/>
+                    <div class="user-info">
+                        <img class="img-circular":src="mainchat.groupphoto" style="width: 32px; height: 32px; margin-left: 2px;"/>
+                        <h3 style="margin-left: 10px; margin-bottom: 0; margin-right: 10px;">{{mainchat.groupname}}</h3>
+                        <img v-if="mainchat.isgroup" src="/assets/pencil.svg" style="width: 16px; height: 16px; cursor: pointer; margin-right: 10px;"/>
+                    </div>
+                </div>
+                <div class="message-screen">
+
+                </div>
+                <div class="bottombar-chat">
+                    <input type="file" accept="image/*" ref="sendPhotoInput" style="display: none;" @change="sendPhotoFileSelect"/>
+                    <img  v-if="!messagephoto" src="/assets/photo-icon.svg" @click="sendPhotoButton" style="width: 32px; height: 32px; cursor: pointer; margin-left: 10px; margin-right: 10px;">
+                    <img v-else src="/assets/cross.svg" @click="messagephoto=null" style="width: 32px; height: 32px; cursor: pointer; margin-left: 10px; margin-right: 10px;">
+                    
+                    <!-- Da fare -->
+                    <div class="message-text">
+                        <input class="message-textbox" v-model="messagetext" placeholder="Write a message">
+                    </div>
+                    
+                    <img v-if="messagetext || messagephoto" src="/assets/send.svg" style="width: 32px; height: 32px; cursor: pointer; margin-left: 10px; margin-right: 10px;">
+                    <div v-if="messagephoto" class="messagephoto-preview">
+                        <img :src="messagephoto" style="width: 250px; height: 250px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <!-- Box to change username and photo -->
+        <div class="box-container" v-if="changeusernameshown">
+            <div class="blurred-box">
                 Enter a new username:
                 <input class="new-username" v-model="newusername" placeholder="new username">
-                <input type="file" accept="image/*" ref="changeimageInput" style="display: none;" @change="changePhotoFileSelect"/>
+                <input type="file" accept="image/*" ref="changePhotoInput" style="display: none;" @change="changePhotoFileSelect"/>
                 <div v-if="newuserphoto" style="display: flex; flex-direction: column; align-items: center;">
                     Preview profile pic:
                     <img class="img-circular" :src="newuserphoto" style="width: 64px; height: 64px; background-color: #695d5d;"/>
@@ -202,6 +285,13 @@ body {
         object-fit: cover;
     }
     
+    /* All page */
+    .all-screen{
+        width: 100vw;
+        height: 100vh;
+    }
+
+
 
     /* Navbar */
     .navbar-dark{
@@ -209,7 +299,7 @@ body {
         position: relative;
         display: flex;
         align-items: center;
-        height: 10vh;
+        height: 60px;
         width: 100%;
     }
 
@@ -225,27 +315,41 @@ body {
         border-radius: 20px;
     }
 
-
     /* Searchbox */
     .searchbox{
-        position: absolute; /* Posiziona l'elemento in modo indipendente dagli altri */
-        top: 50%;           /* Centra verticalmente */
-        left: 50%;          /* Centra orizzontalmente */
-        transform: translate(-50%, -50%); /* Sposta il punto di riferimento al centro dell'elemento */
-        margin: 0;          /* Elimina margini predefiniti */
-        color: white;       /* Colore del testo */
-        height: 27px;        /* deve essere uguale all'altezza del searchbox */
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        margin: 0;
+        height: 36px;
+        border-radius: 20px;
+        background-color: #695d5d;
+        display: flex;
+        flex-direction: row;
+        z-index: 100;
+    }
+    .searchbox-userlist{
+        position: relative;
+        margin-right: 34px;
+        margin-top: 6.5px;
+        width: 200px;
     }
     .searchbox-user{
         color: whitesmoke;
-        background: #332a2a;
         width: 100%;
-        margin: 0;          /* Elimina margini predefiniti */
+        border: none;
+        background-color: #695d5d;
+        margin-bottom: 6.5px;
+    }
+    .searchbox-user:focus{
+        outline: none;
     }
     .searched-dropdown {
+        position: relative;
         background-color: #332a2a;
-        width: 100%;
-        max-height: 200px;
+        width: 200px;
+        max-height: 120px;
         overflow-y: auto;
     }
     .searched-dropdown ul {
@@ -256,6 +360,7 @@ body {
     }
 
     .searched-dropdown li {
+        height: 40px;
         padding: 10px;
         cursor: pointer;
     }
@@ -265,19 +370,23 @@ body {
     }
 
 
+
     /* Box change username and photo */
     .box-container {
         display: flex;
         justify-content: center;
         align-items: center;
         width: 100%;
-        height: 90vh;
+        height: calc(100vh - 60px);
+        position: absolute;
+        top: 60px;
     }
     .blurred-box {
         display: flex;
         width: 400px;
         height: 400px;
-        background-color: rgba(0, 0, 255, 0.5);
+        background-color: rgba(80, 59, 59, 0.5);
+        border-radius: 20px;
         justify-content: center;
         align-items: center;
         flex-direction: column;
@@ -302,14 +411,23 @@ body {
         transform: translate(-50%, -50%);
     }
 
+
+    /* Main screen */
+    .main-screen{
+        display: flex;
+        flex-direction: row;
+        height: calc(100vh - 60px);
+        width: 100%;
+    }
+
+
     /* Sidebar */
     .sidebar-chats{
         background-color: rgb(38, 38, 44);
-        height: 90vh;
-        width: 20vw;
+        height: 100%;
+        width: 350px;
     }
     .chats-dropdown {
-        background-color: #332a2a;
         width: 100%;
     }
     .chats-dropdown ul {
@@ -318,7 +436,6 @@ body {
         margin: 0;
         color: whitesmoke;
     }
-
     .chats-dropdown li {
         padding: 10px;
         cursor: pointer;
@@ -326,11 +443,9 @@ body {
         display: flex;
         align-items: center;
     }
-
     .chats-dropdown li:hover {
         background-color: #695d5d;
     }
-
     .chatpreview{
         width: 100%;
     }
@@ -359,5 +474,72 @@ body {
         left: 95%;
         top: 50%;
         transform: translate(-50%,-50%);
+    }
+
+
+    /* Main chat */
+    .main-chat{
+        height: 100%;
+        width: calc(100% - 350px);
+    }
+
+    /* Topbar */
+    .topbar-chat{
+        display: flex;
+        align-items: center;
+        background-color: rgb(39, 35, 35);
+        height: 60px;
+        width: 100%;
+        position: relative;
+    }
+    .backarrow{
+        margin-left: 10px;
+    }
+
+    /* Message screen */
+    .message-screen{
+        height: calc(100% - 120px);
+        width: 100%;
+    }
+
+    /* Bottom bar */
+    .bottombar-chat{
+        display: flex;
+        align-items: center;
+        background-color: rgb(39, 35, 35);
+        height: 60px;
+        width: 100%;
+        position: relative;
+    }
+    .message-text{
+        height: 36px;
+        border-radius: 20px; 
+        background-color: #695d5d;
+        display: flex;
+        align-items: center;
+        width: 80%;
+    }
+    .message-textbox{
+        margin-left: 10px;
+        margin-right: 10px;
+        color: whitesmoke;
+        background: #695d5d;
+        border: none;
+        width: 100%;
+    }
+    .message-textbox:focus{
+        outline: none;
+    }
+    .messagephoto-preview{
+        position: absolute;
+        top: 0%;
+        height: 300px;
+        width: 300px;
+        transform: translateY(-100%);
+        background-color: rgb(39, 35, 35);
+        border-top-right-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 </style>

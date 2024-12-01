@@ -37,6 +37,7 @@ type Chat struct{
 	ChatId int `json:"chatid"`
 	GroupName string `json:"groupname"`
 	GroupPhoto string `json:"groupphoto"`
+	IsGroup bool `json:"isgroup"`
 	MessageList []Message `json:"messagelist"`
 }
 

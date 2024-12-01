@@ -29,35 +29,29 @@
 </script>
 
 <template>
-    <div class="container">
-        <div class="box">
-            <h1>WasaText</h1>
+        <div class="blurred-box">
+            <h1 style="position: absolute; top:10%;">WasaText</h1>
             <input class="user-password" v-model="username" placeholder="username" @keyup.enter="login">
             <button class="btn-hover" @click="login">Login</button>
             <ErrorMsg v-if="errormsg" :msg="errormsg"></ErrorMsg>
         </div>
-    </div>
 </template>
 
 <style>
     body {
         background-color: rgb(33, 28, 28);
     }
-
-    .container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-    }
-
-    .box {
+    .blurred-box {
         display: flex;
         width: 400px;
         height: 400px;
-        background-color: blue;
+        background-color: rgba(80, 59, 59, 0.5);
+        border-radius: 20px;
         justify-content: center;
         align-items: center;
         flex-direction: column;
+        color: whitesmoke;
+        position: relative;
+        z-index: 1000;
     }
 </style>
