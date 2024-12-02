@@ -131,8 +131,9 @@
                     let response = await this.$axios.get("/chats/"+chatid,{headers:{"Authorization": `Bearer ${this.userid}`}});
                     this.mainchat=response.data;
                     this.chatshown = true;
+                    
                 } catch (e) {
-                    this.errormsg = e.response.status + ": " + e.response.data;;
+                    this.errormsg = e.response.status + ": " + e.response.data;
                 }
             },
             async closeMainChat(){
@@ -157,13 +158,16 @@
             sendPhotoButton(){
                 this.$refs.sendPhotoInput.click();
             }
-
-
-
         },
         mounted(){
             document.addEventListener('click', this.handleClickOutside);
             this.buildChatPreview();
+        },
+        /* Function to start the messages at the bottom */
+        updated(){
+            if(this.$refs.messagelist){
+                this.$refs.messagelist.scrollTop=this.$refs.messagelist.scrollHeight;
+            }
         }
     }
 </script>
@@ -233,18 +237,50 @@
                     </div>
                 </div>
                 <div class="message-screen">
-
+                    <div v-if="mainchat" class="messagelist" ref="messagelist">
+                        <ul>
+                            <li v-for="message in mainchat.messagelist":key="message.messageid">
+                                <span v-if="message.userid==this.userid" style="display:flex; flex-direction: row-reverse; width: calc(100vw - 360px); height: 100%; ">
+                                    <div class="messagebox-you">
+                                        <div v-if="message.isforwarded" class="forwarded-info" style="display: flex; justify-content: right;">
+                                            <img src="/assets/forward.svg" style="width: 24px; height: 24px;">
+                                            Forwarded {{message.userid}}{{this.userid}}
+                                        </div>
+                                        <div class="messagebox-username" style="text-align: right;">
+                                            <b><h3 style="margin-bottom: 0;">You</h3></b>
+                                        </div>
+                                        <img v-if="message.photo" :src="message.photo" style="max-width: 200px; max-height: 200px; margin: 10px;">
+                                        <div class="messagebox-text">
+                                            {{message.text}}
+                                        </div>
+                                    </div>
+                                </span>
+                                <span v-else style="display:flex; width: calc(100vw - 360px); height: 100%;">
+                                    <div class="messagebox-other">
+                                        <div v-if="message.isforwarded" class="forwarded-info">
+                                            <img src="/assets/forward.svg" style="width: 24px; height: 24px;">
+                                            Forwarded
+                                        </div>
+                                        <div class="messagebox-username">
+                                            <b><h3 style="margin-bottom: 0;">{{message.username}}</h3></b>
+                                        </div>
+                                        <img v-if="message.photo" :src="message.photo" style="max-width: 200px; max-height: 200px; margin: 10px;">
+                                        <div class="messagebox-text">
+                                            {{message.text}}
+                                        </div>
+                                    </div>
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
                 <div class="bottombar-chat">
                     <input type="file" accept="image/*" ref="sendPhotoInput" style="display: none;" @change="sendPhotoFileSelect"/>
                     <img  v-if="!messagephoto" src="/assets/photo-icon.svg" @click="sendPhotoButton" style="width: 32px; height: 32px; cursor: pointer; margin-left: 10px; margin-right: 10px;">
                     <img v-else src="/assets/cross.svg" @click="messagephoto=null" style="width: 32px; height: 32px; cursor: pointer; margin-left: 10px; margin-right: 10px;">
-                    
-                    <!-- Da fare -->
                     <div class="message-text">
                         <input class="message-textbox" v-model="messagetext" placeholder="Write a message">
                     </div>
-                    
                     <img v-if="messagetext || messagephoto" src="/assets/send.svg" style="width: 32px; height: 32px; cursor: pointer; margin-left: 10px; margin-right: 10px;">
                     <div v-if="messagephoto" class="messagephoto-preview">
                         <img :src="messagephoto" style="width: 250px; height: 250px;">
@@ -500,7 +536,55 @@ body {
     .message-screen{
         height: calc(100% - 120px);
         width: 100%;
+        overflow-y: scroll;
     }
+    .messagelist{
+        height: 100%;
+        width: 100%;
+        overflow-y: scroll;
+        display: flex;
+        flex-direction: column;
+    }
+    .messagelist ul{
+        list-style: none;
+        padding: 0;
+        color: whitesmoke;
+    }
+    .messagelist li {
+        padding: 5px;
+        position: relative;
+    }
+    .messagebox-you{
+        width: max-content;
+        background-color: green;
+        border-radius: 20px;
+        border-top-right-radius: 0;
+        margin-right: 20px;
+        max-width: 600px;
+    }
+    .messagebox-other{
+        width: max-content;
+        background-color: green;
+        border-radius: 20px;
+        border-top-left-radius: 0;
+        margin-left: 20px;
+        max-width: 600px;
+    }
+    .forwarded-info{
+        margin-left: 15px;
+        margin-right: 15px;
+    }
+    .messagebox-text{
+        margin-left: 15px;
+        margin-right: 15px;
+        margin-bottom: 10px;
+        word-break: break-word; /* Permette di spezzare parole lunghe */
+    }
+    .messagebox-username{
+        margin-left: 15px;
+        margin-right: 15px;
+    }
+
 
     /* Bottom bar */
     .bottombar-chat{
