@@ -182,14 +182,15 @@
                 }else{
                     this.sendMessage();
                 }
+                this.buildChatPreview();
             },
 
             async openChatFromUser(user){
-                this.buildChatPreview();
+                await this.buildChatPreview();
                 var chatid = -1;
                 for(let i=0;i<this.chats.length;i++){
                     if(this.chats[i].groupname==user.username && !this.chats[i].isgroup){
-                        chatid = chat.chatid;
+                        chatid = this.chats[i].chatid;
                         break;
                     }
                 }
@@ -232,7 +233,7 @@
             <div class="user-info">
                 <img class="img-circular":src="userphoto" style="width: 32px; height: 32px; margin-left: 2px;"/>
                 <h3 style="margin-left: 10px; margin-bottom: 0; margin-right: 10px;">{{username}}</h3>
-                <img @click="changeusernameshown = true" src="/assets/pencil.svg" style="width: 16px; height: 16px; cursor: pointer; margin-right: 10px;"/>
+                <img @click="changeusernameshown = true" src="/assets/pencil.svg" style="width: 16px; height: 16px; cursor: pointer; margin-right: 10px;" v-if="!changeusernameshown"/>
             </div>
 
             <!-- Searchbox to search users -->
@@ -268,7 +269,7 @@
                                     <b>{{chat.lastmessage.username}}: </b>
                                     <img v-if="chat.lastmessage.photo.length>0" src="/assets/photo-icon.svg" style="height: 24px; width: 24px; margin-right: 10px; margin-left: 5px;">
                                     &nbsp;{{chat.lastmessage.text}}
-                                    <img class="checkmark" v-if="chat.lastmessage.isallread && chat.lastmessage.userid==this.userid" src="/assets/double-check.svg" style="height: 24px; width: 24px; color: blue;">
+                                    <img class="checkmark" v-if="chat.lastmessage.isallread && chat.lastmessage.userid==this.userid" src="/assets/double-check-blue.svg" style="height: 24px; width: 24px;">
                                     <img class="checkmark" v-else-if="chat.lastmessage.isallreceived && chat.lastmessage.userid==this.userid" src="/assets/double-check.svg" style="height: 24px; width: 24px;">
                                     <img class="checkmark" v-else-if="chat.lastmessage.userid==this.userid" src="/assets/single-check.svg" style="height: 24px; width: 24px;">
                                 </div>
