@@ -24,7 +24,8 @@
                 mainchat: null,
                 chatshown: false,
                 messagetext: null,
-                messagephoto: null
+                messagephoto: null,
+                n_messageshown: 0
             }
         },
         methods: {
@@ -111,7 +112,6 @@
                             chat.lastmessage.text = chat.lastmessage.text.slice(0,20)+"...";
                         }
                         if (chat.lastmessage.photo.length>0 && chat.lastmessage.text.length===0){
-                            console.log("Testo 0");
                             chat.lastmessage.text="Photo";
                         }
                         if (chat.lastmessage.username==this.username){
@@ -131,7 +131,6 @@
                     let response = await this.$axios.get("/chats/"+chatid,{headers:{"Authorization": `Bearer ${this.userid}`}});
                     this.mainchat=response.data;
                     this.chatshown = true;
-                    
                 } catch (e) {
                     this.errormsg = e.response.status + ": " + e.response.data;
                 }
@@ -141,6 +140,7 @@
                 this.mainchat = null;
                 this.messagephoto = null;
                 this.messagetext = null;
+                this.n_messageshown = 0;
                 this.chatshown = false;
             },
 
@@ -157,16 +157,68 @@
             },
             sendPhotoButton(){
                 this.$refs.sendPhotoInput.click();
+            },
+
+            async sendMessage(){
+                try {
+                    let response = await this.$axios.post("/chats/"+this.mainchat.chatid+"/messages",{text: this.messagetext,photo: this.messagephoto},{headers:{"Authorization": `Bearer ${this.userid}`}});
+                    this.messagetext = null;
+                    this.messagephoto = null;
+                    this.buildMainChat(this.mainchat.chatid);
+                } catch (e) {
+                    this.errormsg = e.response.status + ": " + e.response.data;
+                }
+            },
+            async sendMessageorCreateChat(){
+                if(this.mainchat.chatid==-1){
+                    try {
+                        let response = await this.$axios.post("/newchat",{usernamelist:[this.username,this.mainchat.groupname],firstmessage:{text:this.messagetext}},{headers:{"Authorization": `Bearer ${this.userid}`}});
+                        this.messagetext = null;
+                        this.messagephoto = null;
+                        this.buildMainChat(response.data.chatid);
+                    } catch (e) {
+                        this.errormsg = e.response.status + ": " + e.response.data;
+                    }
+                }else{
+                    this.sendMessage();
+                }
+            },
+
+            async openChatFromUser(user){
+                this.buildChatPreview();
+                var chatid = -1;
+                for(let i=0;i<this.chats.length;i++){
+                    if(this.chats[i].groupname==user.username && !this.chats[i].isgroup){
+                        chatid = chat.chatid;
+                        break;
+                    }
+                }
+                if(chatid==-1){
+                    this.mainchat={
+                        chatid:-1,
+                        groupname:user.username,
+                        groupphoto:user.photo,
+                        isgroup: false,
+                        messagelist:[]
+                    }
+                    this.chatshown = true;
+                }else{
+                    this.buildMainChat(chatid);
+                }
+                this.searcheduser = null;
+                this.users = [];
             }
         },
         mounted(){
             document.addEventListener('click', this.handleClickOutside);
             this.buildChatPreview();
         },
-        /* Function to start the messages at the bottom */
+        /* Updater to check if the messagelist is shown and make the lit start from bottom */
         updated(){
-            if(this.$refs.messagelist){
-                this.$refs.messagelist.scrollTop=this.$refs.messagelist.scrollHeight;
+            const div = document.querySelector('#messagelist');
+            if (div && this.n_messageshown!=this.mainchat.messagelist.length) {
+                div.scrollTop=div.scrollHeight;
+                this.n_messageshown=this.mainchat.messagelist.length;
             }
         }
     }
@@ -190,7 +242,7 @@
                     <input class="searchbox-user" v-model="searcheduser" placeholder="Search user" @keyup.enter="searchUser(sercheduser)">
                     <div v-if="users.length>0" class="searched-dropdown">
                         <ul>
-                            <li v-for="user in users":key="user.username">
+                            <li v-for="user in users":key="user.username" @click="openChatFromUser(user)">
                                 {{user.username}}
                             </li>
                         </ul>
@@ -201,7 +253,7 @@
 
 
         <div class="main-screen">
-            <!-- sidebar with chats -->
+            <!-- Sidebar with chats -->
             <div class="sidebar-chats">
                 <div v-if="chats.length>0" class="chats-dropdown">
                     <ul>
@@ -227,7 +279,8 @@
             </div>
 
             <!-- Main chat screen -->
-            <div class="main-chat" v-if="chatshown">
+            <div class="main-chat" v-if="chatshown && mainchat">
+                <!-- Topbar in mainchat -->
                 <div class="topbar-chat">
                     <img class="backarrow" src="/assets/back-arrow.svg" style="width: 32px; height: 32px; cursor: pointer;" @click="closeMainChat"/>
                     <div class="user-info">
@@ -236,8 +289,9 @@
                         <img v-if="mainchat.isgroup" src="/assets/pencil.svg" style="width: 16px; height: 16px; cursor: pointer; margin-right: 10px;"/>
                     </div>
                 </div>
+                <!-- Message screen in mainchat -->
                 <div class="message-screen">
-                    <div v-if="mainchat" class="messagelist" ref="messagelist">
+                    <div class="messagelist" id="messagelist">
                         <ul>
                             <li v-for="message in mainchat.messagelist":key="message.messageid">
                                 <span v-if="message.userid==this.userid" style="display:flex; flex-direction: row-reverse; width: calc(100vw - 360px); height: 100%; ">
@@ -274,6 +328,7 @@
                         </ul>
                     </div>
                 </div>
+                <!-- Bottom bar in mainchat -->
                 <div class="bottombar-chat">
                     <input type="file" accept="image/*" ref="sendPhotoInput" style="display: none;" @change="sendPhotoFileSelect"/>
                     <img  v-if="!messagephoto" src="/assets/photo-icon.svg" @click="sendPhotoButton" style="width: 32px; height: 32px; cursor: pointer; margin-left: 10px; margin-right: 10px;">
@@ -281,7 +336,7 @@
                     <div class="message-text">
                         <input class="message-textbox" v-model="messagetext" placeholder="Write a message">
                     </div>
-                    <img v-if="messagetext || messagephoto" src="/assets/send.svg" style="width: 32px; height: 32px; cursor: pointer; margin-left: 10px; margin-right: 10px;">
+                    <img v-if="messagetext || messagephoto" src="/assets/send.svg" style="width: 32px; height: 32px; cursor: pointer; margin-left: 10px; margin-right: 10px;" @click="sendMessageorCreateChat">
                     <div v-if="messagephoto" class="messagephoto-preview">
                         <img :src="messagephoto" style="width: 250px; height: 250px;">
                     </div>
