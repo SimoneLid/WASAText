@@ -25,7 +25,11 @@
                 chatshown: false,
                 messagetext: null,
                 messagephoto: null,
-                n_messageshown: 0
+                n_messageshown: 0,
+
+                // for comments
+                commentshown: 0,
+                commentemoji: null
             }
         },
         methods: {
@@ -130,6 +134,9 @@
                 try {
                     let response = await this.$axios.get("/chats/"+chatid,{headers:{"Authorization": `Bearer ${this.userid}`}});
                     this.mainchat=response.data;
+                    this.mainchat.messagelist.forEach( message => {
+                        message.timestamp = message.timestamp.slice(11,16);
+                    });
                     this.chatshown = true;
                 } catch (e) {
                     this.errormsg = e.response.status + ": " + e.response.data;
@@ -141,6 +148,8 @@
                 this.messagephoto = null;
                 this.messagetext = null;
                 this.n_messageshown = 0;
+                this.commentshown = 0;
+                this.commentemoji = null;
                 this.chatshown = false;
             },
 
@@ -170,6 +179,9 @@
                 }
             },
             async sendMessageorCreateChat(){
+                if(this.messagetext==null && this.messagephoto==null){
+                    return
+                }
                 if(this.mainchat.chatid==-1){
                     try {
                         let response = await this.$axios.post("/newchat",{usernamelist:[this.username,this.mainchat.groupname],firstmessage:{text:this.messagetext}},{headers:{"Authorization": `Bearer ${this.userid}`}});
@@ -208,6 +220,50 @@
                 }
                 this.searcheduser = null;
                 this.users = [];
+            },
+            async deleteMessage(message){
+                try{
+                    let response = await this.$axios.delete("/chats/"+this.mainchat.chatid+"/messages/"+message.messageid,{headers:{"Authorization": `Bearer ${this.userid}`}});
+                    this.refresh(message.chatid);
+                } catch (e) {
+                    this.errormsg = e.response.status + ": " + e.response.data;
+                }
+            },
+            async showComments(message){
+                if(this.commentshown!=message.messageid){
+                    this.commentshown=message.messageid;
+                }else{
+                    this.commentshown=0;
+                }
+            },
+            async commentMessage(message){
+                const emojiRegex = /[\u{1F600}-\u{1F64F}|\u{1F300}-\u{1F5FF}|\u{1F680}-\u{1F6FF}|\u{1F700}-\u{1F77F}|\u{1F780}-\u{1F7FF}|\u{1F800}-\u{1F8FF}|\u{1F900}-\u{1F9FF}|\u{1FA00}-\u{1FA6F}|\u{2600}-\u{26FF}|\u{2700}-\u{27BF}|\u{FE00}-\u{FE0F}]/gu;
+                if(emojiRegex.test(this.commentemoji)){
+                    try{
+                        let response = await this.$axios.put("/chats/"+this.mainchat.chatid+"/messages/"+message.messageid+"/comments",{emoji: this.commentemoji},{headers:{"Authorization": `Bearer ${this.userid}`}});
+                        this.refresh(message.chatid);
+                    } catch (e) {
+                        this.errormsg = e.response.status + ": " + e.response.data;
+                    }
+                    
+                }
+                this.commentemoji = null;
+            },
+            async deleteComment(message){
+                try{
+                    let response = await this.$axios.delete("/chats/"+this.mainchat.chatid+"/messages/"+message.messageid+"/comments",{headers:{"Authorization": `Bearer ${this.userid}`}});
+                    this.refresh(message.chatid);
+                } catch (e) {
+                    this.errormsg = e.response.status + ": " + e.response.data;
+                }
+            },
+
+
+
+            // function to refresh all the view after a change
+            async refresh(chatid){
+                this.buildChatPreview();
+                this.buildMainChat(chatid);
             }
         },
         mounted(){
@@ -231,7 +287,7 @@
         <div class="navbar-dark">
             <!-- User photo, name and button to change those -->
             <div class="user-info">
-                <img class="img-circular":src="userphoto" style="width: 32px; height: 32px; margin-left: 2px;"/>
+                <img class="img-circular" :src="userphoto" style="width: 32px; height: 32px; margin-left: 2px;"/>
                 <h3 style="margin-left: 10px; margin-bottom: 0; margin-right: 10px;">{{username}}</h3>
                 <img @click="changeusernameshown = true" src="/assets/pencil.svg" style="width: 16px; height: 16px; cursor: pointer; margin-right: 10px;" v-if="!changeusernameshown"/>
             </div>
@@ -243,7 +299,7 @@
                     <input class="searchbox-user" v-model="searcheduser" placeholder="Search user" @keyup.enter="searchUser(sercheduser)">
                     <div v-if="users.length>0" class="searched-dropdown">
                         <ul>
-                            <li v-for="user in users":key="user.username" @click="openChatFromUser(user)">
+                            <li v-for="user in users" :key="user.username" @click="openChatFromUser(user)">
                                 {{user.username}}
                             </li>
                         </ul>
@@ -258,7 +314,7 @@
             <div class="sidebar-chats">
                 <div v-if="chats.length>0" class="chats-dropdown">
                     <ul>
-                        <li v-for="chat in chats":key="chat.userid" @click="buildMainChat(chat.chatid)">
+                        <li v-for="chat in chats" :key="chat.userid" @click="buildMainChat(chat.chatid)">
                             <div class="chatpreview">
                                 <div class="chatpreviewname">
                                     <img class="img-circular" :src="chat.groupphoto" style="width: 32px; height: 32px;">
@@ -267,8 +323,8 @@
                                 </div>
                                 <div class="messagepreview">
                                     <b>{{chat.lastmessage.username}}: </b>
-                                    <img v-if="chat.lastmessage.photo.length>0" src="/assets/photo-icon.svg" style="height: 24px; width: 24px; margin-right: 10px; margin-left: 5px;">
-                                    &nbsp;{{chat.lastmessage.text}}
+                                    <img v-if="chat.lastmessage.photo.length>0" src="/assets/photo-icon.svg" style="height: 24px; width: 24px; margin-right: 5px; margin-left: 5px;">
+                                    {{chat.lastmessage.text}}
                                     <img class="checkmark" v-if="chat.lastmessage.isallread && chat.lastmessage.userid==this.userid" src="/assets/double-check-blue.svg" style="height: 24px; width: 24px;">
                                     <img class="checkmark" v-else-if="chat.lastmessage.isallreceived && chat.lastmessage.userid==this.userid" src="/assets/double-check.svg" style="height: 24px; width: 24px;">
                                     <img class="checkmark" v-else-if="chat.lastmessage.userid==this.userid" src="/assets/single-check.svg" style="height: 24px; width: 24px;">
@@ -294,19 +350,44 @@
                 <div class="message-screen">
                     <div class="messagelist" id="messagelist">
                         <ul>
-                            <li v-for="message in mainchat.messagelist":key="message.messageid">
+                            <li v-for="message in mainchat.messagelist" :key="message.messageid">
                                 <span v-if="message.userid==this.userid" style="display:flex; flex-direction: row-reverse; width: calc(100vw - 360px); height: 100%; ">
                                     <div class="messagebox-you">
                                         <div v-if="message.isforwarded" class="forwarded-info" style="display: flex; justify-content: right;">
                                             <img src="/assets/forward.svg" style="width: 24px; height: 24px;">
-                                            Forwarded {{message.userid}}{{this.userid}}
+                                            Forwarded
                                         </div>
                                         <div class="messagebox-username" style="text-align: right;">
                                             <b><h3 style="margin-bottom: 0;">You</h3></b>
                                         </div>
                                         <img v-if="message.photo" :src="message.photo" style="max-width: 200px; max-height: 200px; margin: 10px;">
                                         <div class="messagebox-text">
-                                            {{message.text}}
+                                            <pre style="margin: 0; font-size: 0.875rem; font-family: sans-serif;">{{message.text}}</pre>
+                                        </div>
+                                        <div class="messagebox-time">
+                                            <img class="messagebox-checkmark" v-if="message.isallread" src="/assets/double-check-blue.svg" style="height: 24px; width: 24px;">
+                                            <img class="messagebox-checkmark" v-else-if="message.isallreceived" src="/assets/double-check.svg" style="height: 24px; width: 24px;">
+                                            <img class="messagebox-checkmark" v-else src="/assets/single-check.svg" style="height: 24px; width: 24px;">
+                                            {{message.timestamp}}
+                                        </div>
+                                        <div class="messagebox-buttons">
+                                            <img src="/assets/forward.svg" style="height: 24px; width: 24px;">
+                                            <img src="/assets/trashcan.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="deleteMessage(message)">
+                                            <div>
+                                                <img src="/assets/comment.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="showComments(message)">
+                                                {{message.commentlist.length}}
+                                                </div>
+                                        </div>
+                                        <div v-if="commentshown==message.messageid" class="messagebox-comment">
+                                            <input class="commenttext" v-model="commentemoji" maxlength="2" placeholder="Emoji" @keyup.enter="commentMessage(message)">
+                                            <div class="commentlist">
+                                                <ul>
+                                                    <li v-for="comment in message.commentlist" :key="comment.userid">
+                                                        {{comment.username}}: {{comment.emoji}}
+                                                        <img v-if="comment.userid==this.userid" src="/assets/trashcan.svg" style="height: 16px; width: 16px; cursor: pointer;" @click="deleteComment(message)">
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </div>
                                     </div>
                                 </span>
@@ -321,7 +402,28 @@
                                         </div>
                                         <img v-if="message.photo" :src="message.photo" style="max-width: 200px; max-height: 200px; margin: 10px;">
                                         <div class="messagebox-text">
-                                            {{message.text}}
+                                            <pre style="margin: 0; font-size: 0.875rem; font-family: sans-serif;">{{message.text}}</pre>
+                                        </div>
+                                        <div class="messagebox-time">
+                                            {{message.timestamp}}
+                                        </div>
+                                        <div class="messagebox-buttons">
+                                            <div>
+                                            <img src="/assets/comment.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="showComments(message)">
+                                            {{message.commentlist.length}}
+                                            </div>
+                                            <img src="/assets/forward.svg" style="height: 24px; width: 24px;">
+                                        </div>
+                                        <div v-if="commentshown==message.messageid" class="messagebox-comment">
+                                            <input class="commenttext" v-model="commentemoji" maxlength="2" placeholder="Emoji" @keyup.enter="commentMessage(message)">
+                                            <div class="commentlist">
+                                                <ul>
+                                                    <li v-for="comment in message.commentlist" :key="comment.userid">
+                                                        {{comment.username}}: {{comment.emoji}}
+                                                        <img v-if="comment.userid==this.userid" src="/assets/trashcan.svg" style="height: 16px; width: 16px; cursor: pointer;" @click="deleteComment(message)">
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </div>
                                     </div>
                                 </span>
@@ -335,7 +437,7 @@
                     <img  v-if="!messagephoto" src="/assets/photo-icon.svg" @click="sendPhotoButton" style="width: 32px; height: 32px; cursor: pointer; margin-left: 10px; margin-right: 10px;">
                     <img v-else src="/assets/cross.svg" @click="messagephoto=null" style="width: 32px; height: 32px; cursor: pointer; margin-left: 10px; margin-right: 10px;">
                     <div class="message-text">
-                        <input class="message-textbox" v-model="messagetext" placeholder="Write a message">
+                        <input class="message-textbox" v-model="messagetext" placeholder="Write a message" @keyup.enter="sendMessageorCreateChat">
                     </div>
                     <img v-if="messagetext || messagephoto" src="/assets/send.svg" style="width: 32px; height: 32px; cursor: pointer; margin-left: 10px; margin-right: 10px;" @click="sendMessageorCreateChat">
                     <div v-if="messagephoto" class="messagephoto-preview">
@@ -544,7 +646,6 @@ body {
     .chatpreviewname{
         display: flex;
         flex-direction: row;
-        align-items: center;
         position: relative;
         width: 100%;
     }
@@ -610,6 +711,8 @@ body {
         padding: 5px;
         position: relative;
     }
+
+    /* Box containing each message */
     .messagebox-you{
         width: max-content;
         background-color: green;
@@ -617,6 +720,9 @@ body {
         border-top-right-radius: 0;
         margin-right: 20px;
         max-width: 600px;
+        display: flex;
+        flex-direction: column;
+        align-items: end;
     }
     .messagebox-other{
         width: max-content;
@@ -625,6 +731,9 @@ body {
         border-top-left-radius: 0;
         margin-left: 20px;
         max-width: 600px;
+        display: flex;
+        flex-direction: column;
+        align-items: start;
     }
     .forwarded-info{
         margin-left: 15px;
@@ -633,12 +742,65 @@ body {
     .messagebox-text{
         margin-left: 15px;
         margin-right: 15px;
-        margin-bottom: 10px;
         word-break: break-word; /* Permette di spezzare parole lunghe */
     }
     .messagebox-username{
         margin-left: 15px;
         margin-right: 15px;
+    }
+    .messagebox-time{
+        display: flex;
+        justify-content: right;
+        align-items: center;
+        width: 100%;
+        padding-right: 15px;
+    }
+    .messagebox-checkmark{
+        margin-right: 5px;
+    }
+    .messagebox-buttons{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 120px;
+        margin-bottom: 5px;
+        margin-left: 15px;
+        margin-right: 15px;
+    }
+
+    /* Box containing comments */
+    .messagebox-comment{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        border-top: 2px solid black
+    }
+    .commenttext{
+        width: 100px;
+        margin-top: 10px;
+        margin-bottom: 5px;
+    }
+    .commentlist{
+        width: 100%;
+        overflow-y: scroll;
+        display: flex;
+        flex-direction: column;
+        max-height: 150px;
+    }
+    .commentlist ul{
+        list-style: none;
+        padding: 0;
+        color: whitesmoke;
+    }
+    .commentlist li {
+        padding: 5px;
+        padding-left: 10px;
+        padding-right: 10px;
+        height: 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
 
 
@@ -666,6 +828,7 @@ body {
         background: #695d5d;
         border: none;
         width: 100%;
+        height: 23px;
     }
     .message-textbox:focus{
         outline: none;

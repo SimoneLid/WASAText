@@ -94,6 +94,7 @@ type Comment struct{
 	MessageId int `json:"messageid"`
 	UserId int `json:"userid"`
 	Emoji string `json:"emoji"`
+	Username string `json:"username"`
 }
 
 type Photo struct{

@@ -426,7 +426,9 @@ func (db *appdbimpl) GetChat(chatid int, userid int) (components.Chat, error){
 
 		message.CommentList = []components.Comment{}
 		// gets all the comment of the message
-		commentrows, err := db.c.Query(`SELECT * FROM Comment WHERE MessageId=?`, message.MessageId)
+		commentrows, err := db.c.Query(`SELECT c.MessageId, c.UserId, c.Emoji, u.Username
+		FROM Comment c JOIN User u ON c.UserId=u.UserId
+		WHERE MessageId=?`, message.MessageId)
 		if err != nil{
 			return chat, err
 		}
@@ -436,7 +438,7 @@ func (db *appdbimpl) GetChat(chatid int, userid int) (components.Chat, error){
 		// cicle for all the comments
 		for commentrows.Next(){
 			var comment components.Comment
-			err = commentrows.Scan(&comment.MessageId,&comment.UserId,&comment.Emoji)
+			err = commentrows.Scan(&comment.MessageId,&comment.UserId,&comment.Emoji,&comment.Username)
 			if err != nil{
 				return chat, err
 			}

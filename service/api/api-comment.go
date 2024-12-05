@@ -67,7 +67,7 @@ func (rt *_router) commentMessage(w http.ResponseWriter, r *http.Request, ps htt
 	}
 
 	// check the comment is a single character
-	if len(emoji.Emoji)!= 1{
+	if len(emoji.Emoji)<1 && len(emoji.Emoji)> 4{
 		http.Error(w,database.ErrCommentLength.Error(),http.StatusBadRequest) // 400
 		return
 	}
