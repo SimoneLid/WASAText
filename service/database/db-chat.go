@@ -311,7 +311,7 @@ func (db *appdbimpl) GetUserChats(userid int) ([]components.ChatPreview, error){
 	rowschat, err := db.c.Query(`SELECT c.ChatId, u.Username, u.Photo, m.MessageId, m.ChatId, m.UserId, u2.Username, m.Text, m.Photo, m.Timestamp
 	FROM ChatUser cu JOIN Chat c ON cu.ChatId = c.ChatId JOIN Message m ON m.ChatId = c.ChatId JOIN ChatUser cu2 ON cu2.ChatId=cu.ChatId JOIN User u ON cu2.UserId = u.UserId JOIN User u2 ON u2.UserId = m.UserId
 	WHERE cu.UserId = ? AND c.ChatName IS NULL AND u.UserId<>cu.UserId
-	AND m.Timestamp = (SELECT MAX(Timestamp) FROM Message WHERE ChatId = c.ChatId)`,userid)
+	AND m.MessageId = (SELECT MessageId FROM Message WHERE ChatId = c.ChatId ORDER BY Timestamp DESC, MessageId DESC LIMIT 1)`,userid)
 	if err != nil{
 		return chats, err
 	}

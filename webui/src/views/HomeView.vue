@@ -29,7 +29,10 @@
 
                 // for comments
                 commentshown: 0,
-                commentemoji: null
+                commentemoji: null,
+
+                // for forwarding message
+                messageToforward: 0
             }
         },
         methods: {
@@ -38,6 +41,10 @@
                 if (this.$refs.boxsearchuser && !this.$refs.boxsearchuser.contains(event.target)) {
                     this.users = [];
                     this.searcheduser = null;
+                }
+                if (this.messageToforward!=0 && event.target.id != "forwardbutton" && !this.$refs.chatlist.contains(event.target)){
+                    this.messageToforward = 0;
+                    console.log(this.messageToforward);
                 }
             },
             async searchUser(searcheduser) {
@@ -125,21 +132,27 @@
                         this.chats.push(chat);
                     });
                 } catch (e) {
-                    this.errormsg = e.response.status + ": " + e.response.data;;
+                    //this.errormsg = e.response.status + ": " + e.response.data;
+                    this.errormsg = toString(e);
                 }
             },
             async buildMainChat(chatid){
                 this.errormsg = null;
                 this.mainchat = null;
-                try {
-                    let response = await this.$axios.get("/chats/"+chatid,{headers:{"Authorization": `Bearer ${this.userid}`}});
-                    this.mainchat=response.data;
-                    this.mainchat.messagelist.forEach( message => {
-                        message.timestamp = message.timestamp.slice(11,16);
-                    });
-                    this.chatshown = true;
-                } catch (e) {
-                    this.errormsg = e.response.status + ": " + e.response.data;
+                if(this.messageToforward != 0){
+                    this.forwardMessage(chatid);
+                }else{
+                    try {
+                        let response = await this.$axios.get("/chats/"+chatid,{headers:{"Authorization": `Bearer ${this.userid}`}});
+                        this.mainchat=response.data;
+                        this.mainchat.messagelist.forEach( message => {
+                            message.timestamp = message.timestamp.slice(11,16);
+                        });
+                        this.chatshown = true;
+                    } catch (e) {
+                        this.errormsg = e.response.status + ": " + e.response.data;
+                    }
+                    this.buildChatPreview();
                 }
             },
             async closeMainChat(){
@@ -196,7 +209,15 @@
                 }
                 this.buildChatPreview();
             },
-
+            async forwardMessage(chatid){
+                try {
+                    let response = await this.$axios.post("/chats/"+chatid+"/forwardedmessages",{messageid: this.messageToforward},{headers:{"Authorization": `Bearer ${this.userid}`}});
+                    this.messageToforward = 0;
+                    this.buildMainChat(chatid);
+                } catch (e) {
+                    this.errormsg = e.response.status + ": " + e.response.data;
+                }
+            },
             async openChatFromUser(user){
                 await this.buildChatPreview();
                 var chatid = -1;
@@ -224,7 +245,7 @@
             async deleteMessage(message){
                 try{
                     let response = await this.$axios.delete("/chats/"+this.mainchat.chatid+"/messages/"+message.messageid,{headers:{"Authorization": `Bearer ${this.userid}`}});
-                    this.refresh(message.chatid);
+                    this.buildMainChat(message.chatid);
                 } catch (e) {
                     this.errormsg = e.response.status + ": " + e.response.data;
                 }
@@ -241,7 +262,7 @@
                 if(emojiRegex.test(this.commentemoji)){
                     try{
                         let response = await this.$axios.put("/chats/"+this.mainchat.chatid+"/messages/"+message.messageid+"/comments",{emoji: this.commentemoji},{headers:{"Authorization": `Bearer ${this.userid}`}});
-                        this.refresh(message.chatid);
+                        this.buildMainChat(message.chatid);
                     } catch (e) {
                         this.errormsg = e.response.status + ": " + e.response.data;
                     }
@@ -252,19 +273,33 @@
             async deleteComment(message){
                 try{
                     let response = await this.$axios.delete("/chats/"+this.mainchat.chatid+"/messages/"+message.messageid+"/comments",{headers:{"Authorization": `Bearer ${this.userid}`}});
-                    this.refresh(message.chatid);
+                    this.buildMainChat(message.chatid);
                 } catch (e) {
                     this.errormsg = e.response.status + ": " + e.response.data;
                 }
             },
+            async startForwardingMessage(messageid){
+                this.messageToforward = messageid;
+                console.log(this.messageToforward);
+            },
 
 
 
-            // function to refresh all the view after a change
-            async refresh(chatid){
-                this.buildChatPreview();
-                this.buildMainChat(chatid);
+
+
+            // function to refresh the views
+            async refresh(){
+                this.messageToforward = 0;
+                this.n_messageshown = 0;
+                if(this.mainchat){
+                    this.buildMainChat(this.mainchat.chatid);
+                }else{
+                    this.buildChatPreview();
+                }
             }
+
+
+
         },
         mounted(){
             document.addEventListener('click', this.handleClickOutside);
@@ -311,8 +346,16 @@
 
         <div class="main-screen">
             <!-- Sidebar with chats -->
-            <div class="sidebar-chats">
-                <div v-if="chats.length>0" class="chats-dropdown">
+            <div class="sidebar-chats" ref="sidebar">
+                <div class="sidebar-buttons">
+                    <img src="/assets/add-square.svg" style="width: 32px; height: 32px; margin-left: 10px; margin-right: 10px; cursor: pointer;">
+                    <div v-if="messageToforward!=0" style="color: whitesmoke;">
+                        Forward to...<br>
+                        (click ouside sidebar to cancel)
+                    </div>
+                    <img src="/assets/refresh.svg" style="width: 32px; height: 32px; margin-left: 10px; margin-right: 10px; cursor: pointer;" @click="refresh">
+                </div>
+                <div v-if="chats.length>0" class="chats-dropdown" ref="chatlist">
                     <ul>
                         <li v-for="chat in chats" :key="chat.userid" @click="buildMainChat(chat.chatid)">
                             <div class="chatpreview">
@@ -323,8 +366,8 @@
                                 </div>
                                 <div class="messagepreview">
                                     <b>{{chat.lastmessage.username}}: </b>
-                                    <img v-if="chat.lastmessage.photo.length>0" src="/assets/photo-icon.svg" style="height: 24px; width: 24px; margin-right: 5px; margin-left: 5px;">
-                                    {{chat.lastmessage.text}}
+                                    <img v-if="chat.lastmessage.photo.length>0" src="/assets/photo-icon.svg" style="height: 24px; width: 24px; margin-left: 5px;">
+                                    &nbsp;{{chat.lastmessage.text}}
                                     <img class="checkmark" v-if="chat.lastmessage.isallread && chat.lastmessage.userid==this.userid" src="/assets/double-check-blue.svg" style="height: 24px; width: 24px;">
                                     <img class="checkmark" v-else-if="chat.lastmessage.isallreceived && chat.lastmessage.userid==this.userid" src="/assets/double-check.svg" style="height: 24px; width: 24px;">
                                     <img class="checkmark" v-else-if="chat.lastmessage.userid==this.userid" src="/assets/single-check.svg" style="height: 24px; width: 24px;">
@@ -371,7 +414,7 @@
                                             {{message.timestamp}}
                                         </div>
                                         <div class="messagebox-buttons">
-                                            <img src="/assets/forward.svg" style="height: 24px; width: 24px;">
+                                            <img src="/assets/forward.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="startForwardingMessage(message.messageid)" id="forwardbutton">
                                             <img src="/assets/trashcan.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="deleteMessage(message)">
                                             <div>
                                                 <img src="/assets/comment.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="showComments(message)">
@@ -621,8 +664,17 @@ body {
         height: 100%;
         width: 350px;
     }
+    .sidebar-buttons{
+        width: 100%;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
     .chats-dropdown {
         width: 100%;
+        height: calc(100% - 36px); /* minus height of buttons */
+        overflow-y: scroll;
     }
     .chats-dropdown ul {
         list-style: none;
@@ -693,12 +745,14 @@ body {
     .message-screen{
         height: calc(100% - 120px);
         width: 100%;
-        overflow-y: scroll;
+        overflow-y: auto;
+        overflow-x: hidden;
     }
     .messagelist{
         height: 100%;
         width: 100%;
-        overflow-y: scroll;
+        overflow-y: auto;
+        overflow-x: hidden;
         display: flex;
         flex-direction: column;
     }
