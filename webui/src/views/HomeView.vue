@@ -11,8 +11,15 @@
                 searcheduser: null,
                 users: [],
 
+                // variable to make appear the blurred boxes
+                boxshown: 0,
+                /*  1 = change profile
+                    2 = change group
+                    3 = add users to group
+                    4 = crate group
+                */
+
                 // for changing username and photo
-                changeusernameshown: false,
                 changedinfo: false,
                 newusername : null,
                 newuserphoto: null,
@@ -32,7 +39,12 @@
                 commentemoji: null,
 
                 // for forwarding message
-                messageToforward: 0
+                messageToforward: 0,
+
+                // for changing group name and photo
+                changedgroupinfo: false,
+                newgroupname : null,
+                newgroupphoto: null,
             }
         },
         methods: {
@@ -81,7 +93,7 @@
             async resetChangeUsernamePrompt(){
                 this.newusername = null;
                 this.newuserphoto = null;
-                this.changeusernameshown = false;
+                this.boxshown = 0;
                 this.errormsg = null;
             },
             async changeUsernamePhoto(){
@@ -93,7 +105,7 @@
                         this.username = this.newusername;
                         this.changedinfo = true;
                     } catch (e) {
-                        this.errormsg = e.response.status + ": " + e.response.data;
+                        this.errormsg = e.response.data;
                     }
                 }
                 if (this.newuserphoto){
@@ -103,13 +115,13 @@
                         this.userphoto = this.newuserphoto;
                         this.changedinfo = true;
                     } catch (e) {
-                        this.errormsg = e.response.status + ": " + e.response.data;
+                        this.errormsg = e.response.data;
                     }
                 }
                 this.newusername = null;
                 this.newuserphoto = null;
                 if (this.changedinfo){
-                    this.changeusernameshown = false;
+                    this.boxshown = 0;
                     this.errormsg = null;
                 }
             },
@@ -119,8 +131,11 @@
                 try {
                     let response = await this.$axios.get("/chats",{headers:{"Authorization": `Bearer ${this.userid}`}});
                     response.data.forEach(chat => {
-                        if (chat.lastmessage.text.length>20){
-                            chat.lastmessage.text = chat.lastmessage.text.slice(0,20)+"...";
+                        if (chat.groupname.length>16){
+                            chat.groupname = chat.groupname.slice(0,16)+"...";
+                        }
+                        if (chat.lastmessage.text.length>18){
+                            chat.lastmessage.text = chat.lastmessage.text.slice(0,18)+"...";
                         }
                         if (chat.lastmessage.photo.length>0 && chat.lastmessage.text.length===0){
                             chat.lastmessage.text="Photo";
@@ -145,6 +160,9 @@
                     try {
                         let response = await this.$axios.get("/chats/"+chatid,{headers:{"Authorization": `Bearer ${this.userid}`}});
                         this.mainchat=response.data;
+                        if (this.mainchat.groupname.length>16){
+                            this.mainchat.groupname = this.mainchat.groupname.slice(0,16)+"...";
+                        }
                         this.mainchat.messagelist.forEach( message => {
                             message.timestamp = message.timestamp.slice(11,16);
                         });
@@ -207,7 +225,6 @@
                 }else{
                     this.sendMessage();
                 }
-                this.buildChatPreview();
             },
             async forwardMessage(chatid){
                 try {
@@ -245,7 +262,12 @@
             async deleteMessage(message){
                 try{
                     let response = await this.$axios.delete("/chats/"+this.mainchat.chatid+"/messages/"+message.messageid,{headers:{"Authorization": `Bearer ${this.userid}`}});
-                    this.buildMainChat(message.chatid);
+                    if(this.mainchat.messagelist.length>1){
+                        this.buildMainChat(message.chatid);
+                    }else{
+                        this.mainchat = null;
+                        this.buildChatPreview();
+                    }
                 } catch (e) {
                     this.errormsg = e.response.status + ": " + e.response.data;
                 }
@@ -282,9 +304,64 @@
                 this.messageToforward = messageid;
                 console.log(this.messageToforward);
             },
+            async leaveGroup(){
+                try{
+                    let response = await this.$axios.delete("/chats/"+this.mainchat.chatid+"/users/"+this.userid,{headers:{"Authorization": `Bearer ${this.userid}`}});
+                    this.mainchat = null;
+                    this.buildChatPreview();
+                } catch (e) {
+                    this.errormsg = e.response.status + ": " + e.response.data;
+                }
+            },
+
+            // Button to change the photo of group handler
+            changeGroupPhotoFileSelect(){
+                const file = this.$refs.changeGroupPhotoInput.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.newgroupphoto = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            },
+            changeGroupPhotoButton(){
+                this.$refs.changeGroupPhotoInput.click();
+            },
 
 
-
+            async resetChangeGroupPrompt(){
+                this.newgroupname = null;
+                this.newgroupphoto = null;
+                this.boxshown = 0;
+                this.errormsg = null;
+            },
+            async changeGroupNamePhoto(){
+                this.errormsg = null;
+                if (this.newgroupname){
+                    try {
+                        let response = await this.$axios.put("/chats/"+this.mainchat.chatid+"/name", {groupname: this.newgroupname.trim()},{headers:{"Authorization": `Bearer ${this.userid}`}});
+                        this.changedgroupinfo = true;
+                    } catch (e) {
+                        this.errormsg = e.response.status + ": " + e.response.data;
+                    }
+                }
+                if (this.newgroupphoto){
+                    try {
+                        let response = await this.$axios.put("/chats/"+this.mainchat.chatid+"/photo",{photo: this.newgroupphoto},{headers:{"Authorization": `Bearer ${this.userid}`}});
+                        this.changedgroupinfo = true;
+                    } catch (e) {
+                        this.errormsg = e.response.status + ": " + e.response.data;
+                    }
+                }
+                this.newgroupname = null;
+                this.newgroupphoto = null;
+                if (this.changedgroupinfo){
+                    this.boxshown = 0;
+                    this.errormsg = null;
+                    this.buildMainChat(this.mainchat.chatid);
+                }
+            },
 
 
             // function to refresh the views
@@ -324,7 +401,7 @@
             <div class="user-info">
                 <img class="img-circular" :src="userphoto" style="width: 32px; height: 32px; margin-left: 2px;"/>
                 <h3 style="margin-left: 10px; margin-bottom: 0; margin-right: 10px;">{{username}}</h3>
-                <img @click="changeusernameshown = true" src="/assets/pencil.svg" style="width: 16px; height: 16px; cursor: pointer; margin-right: 10px;" v-if="!changeusernameshown"/>
+                <img @click="boxshown = 1" src="/assets/pencil.svg" style="width: 16px; height: 16px; cursor: pointer; margin-right: 10px;" v-if="boxshown != 1"/>
             </div>
 
             <!-- Searchbox to search users -->
@@ -361,7 +438,7 @@
                             <div class="chatpreview">
                                 <div class="chatpreviewname">
                                     <img class="img-circular" :src="chat.groupphoto" style="width: 32px; height: 32px;">
-                                    <h3 style="margin-left: 10px; margin-bottom: 0;">{{chat.groupname}}</h3>
+                                    <h4 style="margin-left: 10px; margin-bottom: 0;">{{chat.groupname}}</h4>
                                     <div class="timepreview">{{chat.lastmessage.timestamp}}</div>
                                 </div>
                                 <div class="messagepreview">
@@ -386,8 +463,12 @@
                     <div class="user-info">
                         <img class="img-circular":src="mainchat.groupphoto" style="width: 32px; height: 32px; margin-left: 2px;"/>
                         <h3 style="margin-left: 10px; margin-bottom: 0; margin-right: 10px;">{{mainchat.groupname}}</h3>
-                        <img v-if="mainchat.isgroup" src="/assets/pencil.svg" style="width: 16px; height: 16px; cursor: pointer; margin-right: 10px;"/>
+                        <img v-if="mainchat.isgroup && boxshown != 2" src="/assets/pencil.svg" style="width: 16px; height: 16px; cursor: pointer; margin-right: 10px;" @click="boxshown = 2"/>
                     </div>
+                    <button v-if="mainchat.isgroup" class="leavebutton" @click="leaveGroup">
+                        <img src="/assets/leave.svg" style="height: 32px; width: 32px;">
+                        Leave
+                    </button>
                 </div>
                 <!-- Message screen in mainchat -->
                 <div class="message-screen">
@@ -397,7 +478,7 @@
                                 <span v-if="message.userid==this.userid" style="display:flex; flex-direction: row-reverse; width: calc(100vw - 360px); height: 100%; ">
                                     <div class="messagebox-you">
                                         <div v-if="message.isforwarded" class="forwarded-info" style="display: flex; justify-content: right;">
-                                            <img src="/assets/forward.svg" style="width: 24px; height: 24px;">
+                                            <img src="/assets/forward.svg" style="width: 24px; height: 24px; margin-right: 5px;">
                                             Forwarded
                                         </div>
                                         <div class="messagebox-username" style="text-align: right;">
@@ -405,7 +486,7 @@
                                         </div>
                                         <img v-if="message.photo" :src="message.photo" style="max-width: 200px; max-height: 200px; margin: 10px;">
                                         <div class="messagebox-text">
-                                            <pre style="margin: 0; font-size: 0.875rem; font-family: sans-serif;">{{message.text}}</pre>
+                                            {{message.text}}
                                         </div>
                                         <div class="messagebox-time">
                                             <img class="messagebox-checkmark" v-if="message.isallread" src="/assets/double-check-blue.svg" style="height: 24px; width: 24px;">
@@ -437,7 +518,7 @@
                                 <span v-else style="display:flex; width: calc(100vw - 360px); height: 100%;">
                                     <div class="messagebox-other">
                                         <div v-if="message.isforwarded" class="forwarded-info">
-                                            <img src="/assets/forward.svg" style="width: 24px; height: 24px;">
+                                            <img src="/assets/forward.svg" style="width: 24px; height: 24px; margin-right: 5px;">
                                             Forwarded
                                         </div>
                                         <div class="messagebox-username">
@@ -445,7 +526,7 @@
                                         </div>
                                         <img v-if="message.photo" :src="message.photo" style="max-width: 200px; max-height: 200px; margin: 10px;">
                                         <div class="messagebox-text">
-                                            <pre style="margin: 0; font-size: 0.875rem; font-family: sans-serif;">{{message.text}}</pre>
+                                            {{message.text}}
                                         </div>
                                         <div class="messagebox-time">
                                             {{message.timestamp}}
@@ -489,24 +570,50 @@
                 </div>
             </div>
         </div>
+    </div>
 
 
-
-        <!-- Box to change username and photo -->
-        <div class="box-container" v-if="changeusernameshown">
-            <div class="blurred-box">
+    <!-- Box to change username and photo -->
+    <div class="box-container" v-if="boxshown == 1">
+        <div class="blurred-box">
+            <h1 style="margin-top: 20px;">Profile Info</h1>
+            <div class="new-username-box">
                 Enter a new username:
-                <input class="new-username" v-model="newusername" placeholder="new username">
-                <input type="file" accept="image/*" ref="changePhotoInput" style="display: none;" @change="changePhotoFileSelect"/>
-                <div v-if="newuserphoto" style="display: flex; flex-direction: column; align-items: center;">
-                    Preview profile pic:
-                    <img class="img-circular" :src="newuserphoto" style="width: 64px; height: 64px; background-color: #695d5d;"/>
+                <div class="new-username-container">
+                    <input class="new-username" v-model="newusername" placeholder="New username">
                 </div>
-                <button @click="changePhotoButton">Select Photo</button>
-                <button class="change-button" @click="changeUsernamePhoto">Confirm</button>
-                <button class="cancel-button" @click="resetChangeUsernamePrompt">Cancel</button>
-                <ErrorMsg v-if="errormsg" :msg="errormsg"></ErrorMsg>
             </div>
+            <input type="file" accept="image/*" ref="changePhotoInput" style="display: none;" @change="changePhotoFileSelect"/>
+            <button class="selectphoto-button" @click="changePhotoButton">Select Photo</button>
+            <div v-if="newuserphoto" style="display: flex; flex-direction: column; align-items: center;">
+                Preview profile pic:
+                <img class="img-circular" :src="newuserphoto" style="width: 64px; height: 64px; background-color: #695d5d;"/>
+            </div>
+            <button class="confirm-button" @click="changeUsernamePhoto">Confirm</button>
+            <button class="cancel-button" @click="resetChangeUsernamePrompt">Cancel</button>
+            <ErrorMsg v-if="errormsg" :msg="errormsg"></ErrorMsg>
+        </div>
+    </div>
+
+    <!-- Box to change group name and photo -->
+    <div class="box-container" v-if="boxshown == 2">
+        <div class="blurred-box">
+            <h1 style="margin-top: 20px;">Group Info</h1>
+            <div class="new-username-box">
+                Enter a new group name:
+                <div class="new-username-container">
+                    <input class="new-username" v-model="newgroupname" placeholder="New group name">
+                </div>
+            </div>
+            <input type="file" accept="image/*" ref="changeGroupPhotoInput" style="display: none;" @change="changeGroupPhotoFileSelect"/>
+            <button class="selectphoto-button" @click="changeGroupPhotoButton">Select Photo</button>
+            <div v-if="newgroupphoto" style="display: flex; flex-direction: column; align-items: center;">
+                Preview group photo:
+                <img class="img-circular" :src="newgroupphoto" style="width: 64px; height: 64px; background-color: #695d5d;"/>
+            </div>
+            <button class="confirm-button" @click="changeGroupNamePhoto">Confirm</button>
+            <button class="cancel-button" @click="resetChangeGroupPrompt">Cancel</button>
+            <ErrorMsg v-if="errormsg" :msg="errormsg"></ErrorMsg>
         </div>
     </div>
 </template>
@@ -614,38 +721,85 @@ body {
         justify-content: center;
         align-items: center;
         width: 100%;
-        height: calc(100vh - 60px);
+        height: 100%;
         position: absolute;
-        top: 60px;
     }
     .blurred-box {
         display: flex;
+        flex-direction: column;
+        align-items: center;
         width: 400px;
         height: 400px;
         background-color: rgba(80, 59, 59, 0.5);
-        border-radius: 20px;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        color: whitesmoke;
-        position: relative;
+        border-radius: 25px;
         z-index: 1000;
+        position: relative;
+        color: whitesmoke;
+    }
+    .new-username-box{
+        margin: 20px;
+        width: 80%;
+    }
+    .new-username-container{
+        width: 100%;
+        padding: 5px;
+        background-color: #171717;
+        border-radius: 20px;
     }
     .new-username{
+        background: none;
+        border: none;
+        outline: none;
+        width: 100%;
         color: whitesmoke;
-        background: #332a2a;
     }
-    .change-button{
+    .selectphoto-button {
+        padding: 5px;
+        padding-left: 20px;
+        padding-right: 20px;
+        border-radius: 20px;
+        border: none;
+        outline: none;
+        background-color: #252525;
+        color: white;
+        margin-bottom: 10px;
+    }
+    .selectphoto-button:hover {
+        background-color: black;
+    }
+    .confirm-button{
         position: absolute;
         top: 90%;
         left: 80%;
         transform: translate(-50%, -50%);
+        padding: 5px;
+        padding-left: 20px;
+        padding-right: 20px;
+        border-radius: 20px;
+        border: none;
+        outline: none;
+        background-color: #252525;
+        color: white;
+    }
+    .confirm-button:hover{
+        background-color: black;
     }
     .cancel-button{
         position: absolute;
         top: 90%;
         left: 20%;
         transform: translate(-50%, -50%);
+        padding: 5px;
+        padding-left: 20px;
+        padding-right: 20px;
+        border-radius: 20px;
+        border: none;
+        outline: none;
+        background-color: #252525;
+        color: white;
+    }
+    .cancel-button:hover{
+        background-color: rgb(182, 52, 52);
     }
 
 
@@ -740,6 +894,18 @@ body {
     .backarrow{
         margin-left: 10px;
     }
+    .leavebutton{
+        position: absolute;
+        left: 91%;
+        background-color: transparent;
+        color: whitesmoke;
+        width: 120px;
+        border-radius: 20px;
+        border-color: rgb(182, 52, 52);
+    }
+    .leavebutton:hover{
+        background-color: rgb(182, 52, 52);
+    }
 
     /* Message screen */
     .message-screen{
@@ -797,6 +963,8 @@ body {
         margin-left: 15px;
         margin-right: 15px;
         word-break: break-word; /* Permette di spezzare parole lunghe */
+        font-size: 0.875rem;
+        font-family: sans-serif;
     }
     .messagebox-username{
         margin-left: 15px;
