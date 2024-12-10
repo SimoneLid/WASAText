@@ -15,8 +15,9 @@
                 boxshown: 0,
                 /*  1 = change profile
                     2 = change group
-                    3 = add users to group
-                    4 = crate group
+                    3 = create group name and photo
+                    4 = create group selec users
+                    5 = add users to group
                 */
 
                 // for changing username and photo
@@ -45,6 +46,16 @@
                 changedgroupinfo: false,
                 newgroupname : null,
                 newgroupphoto: null,
+
+                // for creating new group
+                createdgroupname: null,
+                createdgroupphoto: null,
+                userscreategroup: new Set(),
+                allusers: [],
+
+                // for adding users to a group
+                usersnotinchat: [],
+                userstoadd: new Set()
             }
         },
         methods: {
@@ -209,13 +220,28 @@
                     this.errormsg = e.response.status + ": " + e.response.data;
                 }
             },
+
+            // function called when sending a message that check if the chat is temp
             async sendMessageorCreateChat(){
                 if(this.messagetext==null && this.messagephoto==null){
                     return
                 }
                 if(this.mainchat.chatid==-1){
                     try {
-                        let response = await this.$axios.post("/newchat",{usernamelist:[this.username,this.mainchat.groupname],firstmessage:{text:this.messagetext}},{headers:{"Authorization": `Bearer ${this.userid}`}});
+                        let response = await this.$axios.post("/newchat",{usernamelist:[this.username,this.mainchat.groupname],firstmessage:{text:this.messagetext, photo:this.messagephoto}},{headers:{"Authorization": `Bearer ${this.userid}`}});
+                        this.messagetext = null;
+                        this.messagephoto = null;
+                        this.buildMainChat(response.data.chatid);
+                    } catch (e) {
+                        this.errormsg = e.response.status + ": " + e.response.data;
+                    }
+                }else if(this.mainchat.chatid==-2){
+                    try {
+                        const userslist = [this.username];
+                        this.userscreategroup.forEach( user =>{
+                            userslist.push(user);
+                        });
+                        let response = await this.$axios.post("/newchat",{usernamelist:userslist, groupname: this.mainchat.groupname, groupphoto: this.mainchat.groupphoto, firstmessage:{text:this.messagetext, photo:this.messagephoto}},{headers:{"Authorization": `Bearer ${this.userid}`}});
                         this.messagetext = null;
                         this.messagephoto = null;
                         this.buildMainChat(response.data.chatid);
@@ -226,6 +252,8 @@
                     this.sendMessage();
                 }
             },
+
+
             async forwardMessage(chatid){
                 try {
                     let response = await this.$axios.post("/chats/"+chatid+"/forwardedmessages",{messageid: this.messageToforward},{headers:{"Authorization": `Bearer ${this.userid}`}});
@@ -314,6 +342,7 @@
                 }
             },
 
+
             // Button to change the photo of group handler
             changeGroupPhotoFileSelect(){
                 const file = this.$refs.changeGroupPhotoInput.files[0];
@@ -360,6 +389,119 @@
                     this.boxshown = 0;
                     this.errormsg = null;
                     this.buildMainChat(this.mainchat.chatid);
+                }
+            },
+
+
+            // Button to set the photo of a new group
+            createGroupPhotoFileSelect(){
+                const file = this.$refs.createGroupPhotoInput.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.createdgroupphoto = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            },
+            createGroupPhotoButton(){
+                this.$refs.createGroupPhotoInput.click();
+            },
+
+
+            async resetCreateGroupPrompt(){
+                this.userscreategroup = new Set();
+                this.createdgroupname = null;
+                this.createdgroupphoto = null;
+                this.boxshown = 0;
+                this.errormsg = null;
+            },
+            async createGroupTemp(){
+                // default photo
+	            const default_photo = "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCg0KPCFET0NUWVBFIHN2ZyBQVUJMSUMgIi0vL1czQy8vRFREIFNWRyAxLjEvL0VOIiAiaHR0cDovL3d3dy53My5vcmcvR3JhcGhpY3MvU1ZHLzEuMS9EVEQvc3ZnMTEuZHRkIj4NCjwhLS0gVXBsb2FkZWQgdG86IFNWRyBSZXBvLCB3d3cuc3ZncmVwby5jb20sIEdlbmVyYXRvcjogU1ZHIFJlcG8gTWl4ZXIgVG9vbHMgLS0+CjxzdmcgZmlsbD0iIzAwMDAwMCIgdmVyc2lvbj0iMS4xIiBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgDQoJIHdpZHRoPSI4MDBweCIgaGVpZ2h0PSI4MDBweCIgdmlld0JveD0iNzk2IDc5NiAyMDAgMjAwIiBlbmFibGUtYmFja2dyb3VuZD0ibmV3IDc5NiA3OTYgMjAwIDIwMCIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+DQo8cGF0aCBkPSJNODk2LDc5NmMtNTUuMTQsMC05OS45OTksNDQuODYtOTkuOTk5LDEwMGMwLDU1LjE0MSw0NC44NTksMTAwLDk5Ljk5OSwxMDBjNTUuMTQxLDAsOTkuOTk5LTQ0Ljg1OSw5OS45OTktMTAwDQoJQzk5NS45OTksODQwLjg2LDk1MS4xNDEsNzk2LDg5Niw3OTZ6IE04OTYuNjM5LDgyNy40MjVjMjAuNTM4LDAsMzcuMTg5LDE5LjY2LDM3LjE4OSw0My45MjFjMCwyNC4yNTctMTYuNjUxLDQzLjkyNC0zNy4xODksNDMuOTI0DQoJcy0zNy4xODctMTkuNjY3LTM3LjE4Ny00My45MjRDODU5LjQ1Miw4NDcuMDg1LDg3Ni4xMDEsODI3LjQyNSw4OTYuNjM5LDgyNy40MjV6IE04OTYsOTgzLjg2DQoJYy0yNC42OTIsMC00Ny4wMzgtMTAuMjM5LTYzLjAxNi0yNi42OTVjLTIuMjY2LTIuMzM1LTIuOTg0LTUuNzc1LTEuODQtOC44MmM1LjQ3LTE0LjU1NiwxNS43MTgtMjYuNzYyLDI4LjgxNy0zNC43NjENCgljMi44MjgtMS43MjgsNi40NDktMS4zOTMsOC45MSwwLjgyOGM3LjcwNiw2Ljk1OCwxNy4zMTYsMTEuMTE0LDI3Ljc2NywxMS4xMTRjMTAuMjQ5LDAsMTkuNjktNC4wMDEsMjcuMzE4LTEwLjcxOQ0KCWMyLjQ4OC0yLjE5MSw2LjEyOC0yLjQ3OSw4LjkzMi0wLjcxMWMxMi42OTcsOC4wMDQsMjIuNjE4LDIwLjAwNSwyNy45NjcsMzQuMjUzYzEuMTQ0LDMuMDQ3LDAuNDI1LDYuNDgyLTEuODQyLDguODE3DQoJQzk0My4wMzcsOTczLjYyMSw5MjAuNjkxLDk4My44Niw4OTYsOTgzLjg2eiIvPg0KPC9zdmc+"
+                this.mainchat={
+                        chatid:-2,
+                        groupname:this.createdgroupname,
+                        groupphoto:this.createdgroupphoto,
+                        isgroup: true,
+                        messagelist:[]
+                    }
+                if(!this.createdgroupphoto){
+                    this.mainchat.groupphoto = default_photo;
+                }
+                this.chatshown = true;
+                this.boxshown = 0;
+            },
+            async getAllUsers() {
+                this.errormsg = null;
+                this.allusers=[];
+                try {
+                    let response = await this.$axios.get("/users", {params: {username: ""}});
+                    response.data.userlist.forEach(user => {
+                        if (user.username != this.username){
+                            this.allusers.push(user);
+                        }
+                    });
+                } catch (e) {
+                    this.errormsg = e.response.status + ": " + e.response.data;;
+                }
+            },
+
+            // functions to handle the list of users when creating a group
+            isSelectedCreation(user){
+                return this.userscreategroup.has(user.username);
+            },
+            insertUserCreation(user){
+                if (this.userscreategroup.has(user.username)) {
+                    this.userscreategroup.delete(user.username);
+                } else {
+                    this.userscreategroup.add(user.username);
+                }
+            },
+
+
+            // functions to add users to a group
+            async resetAddUsersPrompt(){
+                this.userstoadd = new Set();
+                this.boxshown = 0;
+                this.errormsg = null;
+            },
+            isSelectedAdding(user){
+                return this.userstoadd.has(user.username);
+            },
+            insertUserAdding(user){
+                if (this.userstoadd.has(user.username)) {
+                    this.userstoadd.delete(user.username);
+                } else {
+                    this.userstoadd.add(user.username);
+                }
+            },
+            async addToGroup(){
+                try {
+                    const userslist = [];
+                    this.userstoadd.forEach( user =>{
+                        userslist.push(user);
+                    });
+                    let response = await this.$axios.put("/chats/"+this.mainchat.chatid+"/users",{usernamelist:userslist},{headers:{"Authorization": `Bearer ${this.userid}`}});
+                    this.buildMainChat(this.mainchat.chatid);
+                } catch (e) {
+                    this.errormsg = e.response.status + ": " + e.response.data;
+                }
+                this.boxshown = 0;
+            },
+            async getUsersNotInChat() {
+                console.log("vai")
+                this.errormsg = null;
+                this.usersnotinchat=[];
+                try {
+                    let response = await this.$axios.get("/users", {params: {username: ""}});
+                    response.data.userlist.forEach(user => {
+                        if (!this.mainchat.usernamelist.includes(user.username)){
+                            this.usersnotinchat.push(user);
+                        }
+                    });
+                } catch (e) {
+                    this.errormsg = e.response.status + ": " + e.response.data;;
                 }
             },
 
@@ -425,7 +567,7 @@
             <!-- Sidebar with chats -->
             <div class="sidebar-chats" ref="sidebar">
                 <div class="sidebar-buttons">
-                    <img src="/assets/add-square.svg" style="width: 32px; height: 32px; margin-left: 10px; margin-right: 10px; cursor: pointer;">
+                    <img src="/assets/add-square.svg" style="width: 32px; height: 32px; margin-left: 10px; margin-right: 10px; cursor: pointer;" @click="boxshown = 3">
                     <div v-if="messageToforward!=0" style="color: whitesmoke;">
                         Forward to...<br>
                         (click ouside sidebar to cancel)
@@ -464,6 +606,9 @@
                         <img class="img-circular":src="mainchat.groupphoto" style="width: 32px; height: 32px; margin-left: 2px;"/>
                         <h3 style="margin-left: 10px; margin-bottom: 0; margin-right: 10px;">{{mainchat.groupname}}</h3>
                         <img v-if="mainchat.isgroup && boxshown != 2" src="/assets/pencil.svg" style="width: 16px; height: 16px; cursor: pointer; margin-right: 10px;" @click="boxshown = 2"/>
+                    </div>
+                    <div v-if="mainchat.isgroup && mainchat.chatid != -2" @click="boxshown = 5; this.getUsersNotInChat();" class="addusers-button">
+                        <img src="/assets/add-users.svg" style="height: 32px; width: 32px;">
                     </div>
                     <button v-if="mainchat.isgroup" class="leavebutton" @click="leaveGroup">
                         <img src="/assets/leave.svg" style="height: 32px; width: 32px;">
@@ -613,6 +758,70 @@
             </div>
             <button class="confirm-button" @click="changeGroupNamePhoto">Confirm</button>
             <button class="cancel-button" @click="resetChangeGroupPrompt">Cancel</button>
+            <ErrorMsg v-if="errormsg" :msg="errormsg"></ErrorMsg>
+        </div>
+    </div>
+
+    <!-- Box to create a group -->
+    <div class="box-container" v-if="boxshown == 3">
+        <div class="blurred-box">
+            <h1 style="margin-top: 20px;">New Group</h1>
+            <div class="new-username-box">
+                Enter the group name:
+                <div class="new-username-container">
+                    <input class="new-username" v-model="createdgroupname" placeholder="Group name">
+                </div>
+            </div>
+            <input type="file" accept="image/*" ref="createGroupPhotoInput" style="display: none;" @change="createGroupPhotoFileSelect"/>
+            <button class="selectphoto-button" @click="createGroupPhotoButton">Select Photo</button>
+            <div v-if="createdgroupphoto" style="display: flex; flex-direction: column; align-items: center;">
+                Preview group photo:
+                <img class="img-circular" :src="createdgroupphoto" style="width: 64px; height: 64px; background-color: #695d5d;"/>
+            </div>
+            <button v-if="createdgroupname" class="confirm-button" @click="boxshown = 4;this.getAllUsers();">Next</button>
+            <button class="cancel-button" @click="resetCreateGroupPrompt">Cancel</button>
+            <ErrorMsg v-if="errormsg" :msg="errormsg"></ErrorMsg>
+        </div>
+    </div>
+
+    <!-- Box to add people when creating a group -->
+    <div class="box-container" v-if="boxshown == 4">
+        <div class="blurred-box">
+            <h1 style="margin-top: 20px;">New Group</h1>
+            <h4>Select users</h4>
+            <div class="users-checkbox">
+                <ul>
+                    <li v-for="user in allusers" :key="user.userid" @click="insertUserCreation(user)">
+                        <label>
+                            <input type="checkbox" :checked="isSelectedCreation(user)" @change.prevent />
+                            {{ user.username }}
+                        </label>
+                    </li>
+                </ul>
+            </div>
+            <button v-if="userscreategroup.size>=1" class="confirm-button" @click="createGroupTemp">Confirm</button>
+            <button class="cancel-button" @click="boxshown = 3">Back</button>
+            <ErrorMsg v-if="errormsg" :msg="errormsg"></ErrorMsg>
+        </div>
+    </div>
+
+    <!-- Box to add people when creating a group -->
+    <div class="box-container" v-if="boxshown == 5">
+        <div class="blurred-box">
+            <h1 style="margin-top: 20px;">Add to group</h1>
+            <h4>Select users</h4>
+            <div class="users-checkbox">
+                <ul>
+                    <li v-for="user in usersnotinchat" :key="user.userid" @click="insertUserAdding(user)">
+                        <label>
+                            <input type="checkbox" :checked="isSelectedAdding(user)" @change.prevent />
+                            {{ user.username }}
+                        </label>
+                    </li>
+                </ul>
+            </div>
+            <button v-if="userstoadd.size>=1" class="confirm-button" @click="addToGroup">Confirm</button>
+            <button class="cancel-button" @click="resetAddUsersPrompt">Cancel</button>
             <ErrorMsg v-if="errormsg" :msg="errormsg"></ErrorMsg>
         </div>
     </div>
@@ -894,6 +1103,11 @@ body {
     .backarrow{
         margin-left: 10px;
     }
+    .addusers-button{
+        position: absolute;
+        left: 50%;
+        cursor: pointer;
+    }
     .leavebutton{
         position: absolute;
         left: 91%;
@@ -1066,5 +1280,29 @@ body {
         display: flex;
         align-items: center;
         justify-content: center;
+    }
+
+
+    /* List with users checkbox */
+    .users-checkbox {
+        position: relative;
+        background-color: #292323;
+        width: 200px;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    .users-checkbox ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        color: whitesmoke;
+    }
+    .users-checkbox li {
+        height: 40px;
+        padding: 10px;
+        cursor: pointer;
+    }
+    .users-checkbox li:hover {
+        background-color: #695d5d;
     }
 </style>

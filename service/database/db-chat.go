@@ -383,6 +383,30 @@ func (db *appdbimpl) GetChat(chatid int, userid int) (components.Chat, error){
 		return chat, err
 	}
 
+	// gets all the users in the chat
+	usersrows, err := db.c.Query(`SELECT u.Username FROM User u JOIN ChatUser cu ON u.UserId = cu.UserId
+	WHERE cu.ChatId = ?`, chatid)
+	if err != nil{
+		return chat, err
+	}
+
+	defer usersrows.Close()
+
+	//cicle for all the users
+	for usersrows.Next(){
+		var username string
+		err = usersrows.Scan(&username)
+		if err != nil{
+			return chat, err
+		}
+
+		chat.UsernameList = append(chat.UsernameList, username)
+	}
+
+	if usersrows.Err() != nil{
+		return chat, err
+	}
+
 	// gets all the message in the chat
 	messagerows, err := db.c.Query(`SELECT m.MessageId,m.ChatId,m.UserId,u.Username,m.Text,m.Photo,m.IsForwarded,m.Timestamp
 	FROM Message m JOIN User u ON m.UserId = u.UserId
