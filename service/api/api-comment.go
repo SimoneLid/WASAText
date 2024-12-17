@@ -16,66 +16,65 @@ func (rt *_router) commentMessage(w http.ResponseWriter, r *http.Request, ps htt
 
 	// take the user performing the action from the bearer
 	userperformingid, err := strconv.Atoi(r.Header.Get("Authorization")[7:])
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// take the emoji to comment from the request body
 	var emoji components.Emoji
 	err = json.NewDecoder(r.Body).Decode(&emoji)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// take the chat id from the URL
 	chatid, err := strconv.Atoi(ps.ByName("chat_id"))
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// take the message id from the URL
 	messageid, err := strconv.Atoi(ps.ByName("message_id"))
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// check if the message is in the chat
 	messageinchat, err := rt.db.IsMessageInChat(chatid, messageid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError) // 500
 		return
 	}
-	if !messageinchat{
-		http.Error(w,database.ErrMessNotInChat.Error(),http.StatusUnauthorized) // 401
+	if !messageinchat {
+		http.Error(w, database.ErrMessNotInChat.Error(), http.StatusUnauthorized) // 401
 		return
 	}
-
 
 	// check if the user performing the action is in the chat
 	userinchat, err := rt.db.IsUserInChat(chatid, userperformingid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError) // 500
 		return
 	}
-	if !userinchat{
-		http.Error(w,database.ErrUserNotInChat.Error(),http.StatusUnauthorized) // 401
+	if !userinchat {
+		http.Error(w, database.ErrUserNotInChat.Error(), http.StatusUnauthorized) // 401
 		return
 	}
 
 	// check the comment is a single character
-	if len(emoji.Emoji)<1 && len(emoji.Emoji)> 4{
-		http.Error(w,database.ErrCommentLength.Error(),http.StatusBadRequest) // 400
+	if len(emoji.Emoji) < 1 && len(emoji.Emoji) > 4 {
+		http.Error(w, database.ErrCommentLength.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// inserts the comment in the db
 	err = rt.db.InsertComment(messageid, userperformingid, emoji.Emoji)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
@@ -88,53 +87,51 @@ func (rt *_router) uncommentMessage(w http.ResponseWriter, r *http.Request, ps h
 
 	// take the user performing the action from the bearer
 	userperformingid, err := strconv.Atoi(r.Header.Get("Authorization")[7:])
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// take the chat id from the URL
 	chatid, err := strconv.Atoi(ps.ByName("chat_id"))
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// take the message id from the URL
 	messageid, err := strconv.Atoi(ps.ByName("message_id"))
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// check if the message is in the chat
 	messageinchat, err := rt.db.IsMessageInChat(chatid, messageid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError) // 500
 		return
 	}
-	if !messageinchat{
-		http.Error(w,database.ErrMessNotInChat.Error(),http.StatusUnauthorized) // 401
+	if !messageinchat {
+		http.Error(w, database.ErrMessNotInChat.Error(), http.StatusUnauthorized) // 401
 		return
 	}
-
 
 	// check if the user performing the action is in the chat
 	userinchat, err := rt.db.IsUserInChat(chatid, userperformingid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError) // 500
 		return
 	}
-	if !userinchat{
-		http.Error(w,database.ErrUserNotInChat.Error(),http.StatusUnauthorized) // 401
+	if !userinchat {
+		http.Error(w, database.ErrUserNotInChat.Error(), http.StatusUnauthorized) // 401
 		return
 	}
-
 
 	// deletes the comment if exists
 	err = rt.db.DeleteComment(messageid, userperformingid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 

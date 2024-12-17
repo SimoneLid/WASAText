@@ -15,122 +15,114 @@ import (
 
 // post /chats/newchat
 func (rt *_router) createChat(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
-	
+
 	// take the user performing the action from the bearer
 	userperformingid, err := strconv.Atoi(r.Header.Get("Authorization")[7:])
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
-
 
 	// take the chat to create from the request body
 	var chat components.ChatCreation
 	err = json.NewDecoder(r.Body).Decode(&chat)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
-
 	// check if the are at least 2 person in chat
-	if len(chat.UsernameList)<2{
-		http.Error(w,database.ErrLessTwoUserInChat.Error(),http.StatusBadRequest) // 400
+	if len(chat.UsernameList) < 2 {
+		http.Error(w, database.ErrLessTwoUserInChat.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// if there are more than 2 users check that the group name is not empty
-	if len(chat.UsernameList)>2 && len(chat.GroupName)==0{
-		http.Error(w,database.ErrGroupNameLength.Error(),http.StatusBadRequest) // 400
+	if len(chat.UsernameList) > 2 && len(chat.GroupName) == 0 {
+		http.Error(w, database.ErrGroupNameLength.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// check if the message is empty
-	if len(chat.FirstMessage.Text)==0 && len(chat.FirstMessage.Photo)==0{
-		http.Error(w,database.ErrMessageEmpty.Error(),http.StatusBadRequest) // 400
+	if len(chat.FirstMessage.Text) == 0 && len(chat.FirstMessage.Photo) == 0 {
+		http.Error(w, database.ErrMessageEmpty.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
-	
 	// Inserts the chat in the database
 	var chatid, messageid int
 	chatid, messageid, err = rt.db.InsertChat(chat, userperformingid)
 	if errors.Is(err, database.ErrTransaction) {
-        http.Error(w,err.Error(),http.StatusInternalServerError) // 500
+		http.Error(w, err.Error(), http.StatusInternalServerError) // 500
 	}
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
-
 	var ids components.ChatMessId
-	ids.ChatId=chatid
-	ids.MessageId=messageid
+	ids.ChatId = chatid
+	ids.MessageId = messageid
 
 	// set the header of the response
-	w.Header().Set("Content-Type","application/json")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated) // 201
 	_ = json.NewEncoder(w).Encode(ids)
 }
-
 
 // put /chats/{chat_id}/users
 func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
 
 	// take the user performing the action from the bearer
 	userperformingid, err := strconv.Atoi(r.Header.Get("Authorization")[7:])
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// take the username list from the request body
 	var usernamelist components.UsernameList
 	err = json.NewDecoder(r.Body).Decode(&usernamelist)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// take the chat id from the URL
 	chatid, err := strconv.Atoi(ps.ByName("chat_id"))
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
-	
-	
+
 	// check if the chat is a group
 	isgroup, err := rt.db.IsGroup(chatid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
-	if !isgroup{
-		http.Error(w,database.ErrOperationGroupOnly.Error(),http.StatusBadRequest) // 400
+	if !isgroup {
+		http.Error(w, database.ErrOperationGroupOnly.Error(), http.StatusBadRequest) // 400
 		return
-	} 
+	}
 
 	// check if the user performing the action is in the chat
 	userinchat, err := rt.db.IsUserInChat(chatid, userperformingid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError) // 500
 		return
 	}
-	if !userinchat{
-		http.Error(w,database.ErrUserNotInChat.Error(),http.StatusUnauthorized) // 401
+	if !userinchat {
+		http.Error(w, database.ErrUserNotInChat.Error(), http.StatusUnauthorized) // 401
 		return
 	}
 
-	
 	// insert the usernames in the db
-	err = rt.db.AddUsersToGroup(usernamelist.UsernameList,chatid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	err = rt.db.AddUsersToGroup(usernamelist.UsernameList, chatid)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
-	
 
 	// set the header of the response
 	w.WriteHeader(http.StatusNoContent) // 204
@@ -141,57 +133,57 @@ func (rt *_router) leaveGroup(w http.ResponseWriter, r *http.Request, ps httprou
 
 	// take the user performing the action from the bearer
 	userperformingid, err := strconv.Atoi(r.Header.Get("Authorization")[7:])
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// take the chat id from the URL
 	chatid, err := strconv.Atoi(ps.ByName("chat_id"))
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
-	
+
 	// take the user id from the URL
 	userid, err := strconv.Atoi(ps.ByName("user_id"))
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// check if the chat is a group
 	isgroup, err := rt.db.IsGroup(chatid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
-	if !isgroup{
-		http.Error(w,database.ErrOperationGroupOnly.Error(),http.StatusBadRequest) // 400
+	if !isgroup {
+		http.Error(w, database.ErrOperationGroupOnly.Error(), http.StatusBadRequest) // 400
 		return
-	} 
+	}
 
 	// check if the user performing the action is in the chat
 	userinchat, err := rt.db.IsUserInChat(chatid, userperformingid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError) // 500
 		return
 	}
-	if !userinchat{
-		http.Error(w,database.ErrUserNotInChat.Error(),http.StatusUnauthorized) // 401
+	if !userinchat {
+		http.Error(w, database.ErrUserNotInChat.Error(), http.StatusUnauthorized) // 401
 		return
 	}
 
 	// check if the user performing the action is the same ad the one leaving the group
-	if userperformingid != userid{
-		http.Error(w,database.ErrDifferentUser.Error(),http.StatusUnauthorized) // 401
+	if userperformingid != userid {
+		http.Error(w, database.ErrDifferentUser.Error(), http.StatusUnauthorized) // 401
 		return
 	}
 
 	// deletes the user from the group
 	err = rt.db.DeleteUserFromGroup(userid, chatid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
@@ -204,63 +196,62 @@ func (rt *_router) setGroupName(w http.ResponseWriter, r *http.Request, ps httpr
 
 	// take the user performing the action from the bearer
 	userperformingid, err := strconv.Atoi(r.Header.Get("Authorization")[7:])
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// Take the groupname from the request body
 	var newgroupname components.GroupName
 	err = json.NewDecoder(r.Body).Decode(&newgroupname)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// take the chat id from the URL
 	chatid, err := strconv.Atoi(ps.ByName("chat_id"))
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// check if the group name is empty
-	if len(newgroupname.GroupName)==0{
-		http.Error(w,database.ErrGroupNameLength.Error(),http.StatusBadRequest) // 400
+	if len(newgroupname.GroupName) == 0 {
+		http.Error(w, database.ErrGroupNameLength.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// check if the chat is a group
 	isgroup, err := rt.db.IsGroup(chatid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
-	if !isgroup{
-		http.Error(w,database.ErrOperationGroupOnly.Error(),http.StatusBadRequest) // 400
+	if !isgroup {
+		http.Error(w, database.ErrOperationGroupOnly.Error(), http.StatusBadRequest) // 400
 		return
-	} 
+	}
 
 	// check if the user performing the action is in the chat
 	userinchat, err := rt.db.IsUserInChat(chatid, userperformingid)
-	if err != nil{
-		if errors.Is(err, database.ErrChatNotFound){
-			http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		if errors.Is(err, database.ErrChatNotFound) {
+			http.Error(w, err.Error(), http.StatusBadRequest) // 400
 			return
 		}
-		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
+		http.Error(w, err.Error(), http.StatusInternalServerError) // 500
 		return
 	}
-	if !userinchat{
-		http.Error(w,database.ErrUserNotInChat.Error(),http.StatusUnauthorized) // 401
+	if !userinchat {
+		http.Error(w, database.ErrUserNotInChat.Error(), http.StatusUnauthorized) // 401
 		return
 	}
-
 
 	// change the group name
 	err = rt.db.ChangeGroupName(chatid, newgroupname.GroupName)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
@@ -268,67 +259,66 @@ func (rt *_router) setGroupName(w http.ResponseWriter, r *http.Request, ps httpr
 	w.WriteHeader(http.StatusNoContent) // 204
 }
 
-
 // put /users/{chat_id}/photo
 func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
-	
+
 	// take the user performing the action from the bearer
 	userperformingid, err := strconv.Atoi(r.Header.Get("Authorization")[7:])
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// Take the group photo from the request body
 	var newphoto components.Photo
 	err = json.NewDecoder(r.Body).Decode(&newphoto)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// take the chat id from the URL
 	chatid, err := strconv.Atoi(ps.ByName("chat_id"))
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// check if the chat is a group
 	isgroup, err := rt.db.IsGroup(chatid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
-	if !isgroup{
-		http.Error(w,database.ErrOperationGroupOnly.Error(),http.StatusBadRequest) // 400
+	if !isgroup {
+		http.Error(w, database.ErrOperationGroupOnly.Error(), http.StatusBadRequest) // 400
 		return
-	} 
+	}
 
 	// check if the user performing the action is in the chat
 	userinchat, err := rt.db.IsUserInChat(chatid, userperformingid)
-	if err != nil{
-		if errors.Is(err, database.ErrChatNotFound){
-			http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		if errors.Is(err, database.ErrChatNotFound) {
+			http.Error(w, err.Error(), http.StatusBadRequest) // 400
 			return
 		}
-		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
+		http.Error(w, err.Error(), http.StatusInternalServerError) // 500
 		return
 	}
-	if !userinchat{
-		http.Error(w,database.ErrUserNotInChat.Error(),http.StatusUnauthorized) // 401
+	if !userinchat {
+		http.Error(w, database.ErrUserNotInChat.Error(), http.StatusUnauthorized) // 401
 		return
 	}
 
 	// if the photo is empty sets the dafult photo
-	if len(newphoto.Photo)==0{
-		newphoto.Photo="photo.png"
+	if len(newphoto.Photo) == 0 {
+		newphoto.Photo = "photo.png"
 	}
 
 	// change the group photo
 	err = rt.db.ChangeGroupPhoto(chatid, newphoto.Photo)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
@@ -336,22 +326,21 @@ func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request, ps http
 	w.WriteHeader(http.StatusNoContent) // 204
 }
 
-
 // get /chats
 func (rt *_router) getMyConversations(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
 
 	// take the user performing the action from the bearer
 	userperformingid, err := strconv.Atoi(r.Header.Get("Authorization")[7:])
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	var chats []components.ChatPreview
 	// takes all the chat of the user from db
 	chats, err = rt.db.GetUserChats(userperformingid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
@@ -362,13 +351,13 @@ func (rt *_router) getMyConversations(w http.ResponseWriter, r *http.Request, ps
 
 	// sets the LastAccess fr the user
 	err = rt.db.SetLastAccess(userperformingid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// set the header of the response
-	w.Header().Set("Content-Type","application/json")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK) // 200
 	_ = json.NewEncoder(w).Encode(chats)
 
@@ -379,50 +368,50 @@ func (rt *_router) getConversation(w http.ResponseWriter, r *http.Request, ps ht
 
 	// take the user performing the action from the bearer
 	userperformingid, err := strconv.Atoi(r.Header.Get("Authorization")[7:])
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// take the chat id from the URL
 	chatid, err := strconv.Atoi(ps.ByName("chat_id"))
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// check if the user performing the action is in the chat
 	userinchat, err := rt.db.IsUserInChat(chatid, userperformingid)
-	if err != nil{
-		if errors.Is(err, database.ErrChatNotFound){
-			http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		if errors.Is(err, database.ErrChatNotFound) {
+			http.Error(w, err.Error(), http.StatusBadRequest) // 400
 			return
 		}
-		http.Error(w,err.Error(),http.StatusInternalServerError) // 500
+		http.Error(w, err.Error(), http.StatusInternalServerError) // 500
 		return
 	}
-	if !userinchat{
-		http.Error(w,database.ErrUserNotInChat.Error(),http.StatusUnauthorized) // 401
+	if !userinchat {
+		http.Error(w, database.ErrUserNotInChat.Error(), http.StatusUnauthorized) // 401
 		return
 	}
 
 	var chat components.Chat
 	// takes the chat from the db
 	chat, err = rt.db.GetChat(chatid, userperformingid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// sets the LastRead of the chat for the user
 	err = rt.db.SetLastRead(userperformingid, chatid)
-	if err != nil{
-		http.Error(w,err.Error(),http.StatusBadRequest) // 400
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
 		return
 	}
 
 	// set the header of the response
-	w.Header().Set("Content-Type","application/json")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK) // 200
 	_ = json.NewEncoder(w).Encode(chat)
 

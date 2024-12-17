@@ -41,7 +41,7 @@ import (
 // AppDatabase is the high level interface for the DB
 type AppDatabase interface {
 	// User
-	InsertUser(username string ) (int, string, error)
+	InsertUser(username string) (int, string, error)
 	ChangeUsername(userid int, username string) error
 	ChangeUserPhoto(userid int, photo string) error
 	IsUserInChat(chatid int, userid int) (bool, error)
@@ -96,14 +96,12 @@ func New(db *sql.DB) (AppDatabase, error) {
 				CHECK(LENGTH(Username)>=3 AND LENGTH(Username)<=16)
 				);`
 
-
 	Chat := `CREATE TABLE IF NOT EXISTS Chat(
 				ChatId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 				ChatName TEXT,
 				ChatPhoto TEXT,
 				CHECK ((ChatName IS NULL AND ChatPhoto IS NULL) OR (ChatName IS NOT NULL AND ChatPhoto IS NOT NULL))
 				);`
-
 
 	Message := `CREATE TABLE IF NOT EXISTS Message(
 					MessageId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -118,7 +116,6 @@ func New(db *sql.DB) (AppDatabase, error) {
 					FOREIGN KEY(UserId) REFERENCES User(UserId)
 					);`
 
-
 	Comment := `CREATE TABLE IF NOT EXISTS Comment(
 					MessageId INTEGER NOT NULL,
 					UserId INTEGER NOT NULL,
@@ -127,7 +124,6 @@ func New(db *sql.DB) (AppDatabase, error) {
 					FOREIGN KEY(MessageId) REFERENCES Message(MessageId) ON DELETE CASCADE,
 					FOREIGN KEY(UserId) REFERENCES User(UserId)
 					);`
-
 
 	ChatUser := `CREATE TABLE IF NOT EXISTS ChatUser(
 					UserId INTEGER NOT NULL,
@@ -148,42 +144,38 @@ func New(db *sql.DB) (AppDatabase, error) {
 
 	_, err = db.Exec(User)
 	if err != nil {
-			return nil, fmt.Errorf("error creating database structure: %w", err)
+		return nil, fmt.Errorf("error creating database structure: %w", err)
 	}
 
 	_, err = db.Exec(Chat)
 	if err != nil {
-			return nil, fmt.Errorf("error creating database structure: %w", err)
+		return nil, fmt.Errorf("error creating database structure: %w", err)
 	}
 
 	_, err = db.Exec(Message)
 	if err != nil {
-			return nil, fmt.Errorf("error creating database structure: %w", err)
+		return nil, fmt.Errorf("error creating database structure: %w", err)
 	}
 
 	_, err = db.Exec(Message)
 	if err != nil {
-			return nil, fmt.Errorf("error creating database structure: %w", err)
+		return nil, fmt.Errorf("error creating database structure: %w", err)
 	}
 
 	_, err = db.Exec(Comment)
 	if err != nil {
-			return nil, fmt.Errorf("error creating database structure: %w", err)
+		return nil, fmt.Errorf("error creating database structure: %w", err)
 	}
 
 	_, err = db.Exec(ChatUser)
 	if err != nil {
-			return nil, fmt.Errorf("error creating database structure: %w", err)
+		return nil, fmt.Errorf("error creating database structure: %w", err)
 	}
-
-
 
 	return &appdbimpl{
 		c: db,
 	}, nil
 }
-
-
 
 func (db *appdbimpl) Ping() error {
 	return db.c.Ping()
