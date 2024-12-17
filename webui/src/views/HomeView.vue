@@ -67,7 +67,6 @@
                 }
                 if (this.messageToforward!=0 && event.target.id != "forwardbutton" && !this.$refs.chatlist.contains(event.target)){
                     this.messageToforward = 0;
-                    console.log(this.messageToforward);
                 }
             },
             async searchUser(searcheduser) {
@@ -508,6 +507,9 @@
 
             // function to refresh the views
             async refresh(){
+                this.createdgroupname = null;
+                this.createdgroupphoto = null;
+                this.userscreategroup = [];
                 this.messageToforward = 0;
                 this.n_messageshown = 0;
                 if(this.mainchat){
@@ -550,7 +552,7 @@
             <div class="searchbox" ref="boxsearchuser">
                 <img src="/assets/search.svg" style="width: 32px; height: 32px; margin-top: 2px; margin-left: 2px;">
                 <div class="searchbox-userlist">
-                    <input class="searchbox-user" v-model="searcheduser" placeholder="Search user" @keyup.enter="searchUser(sercheduser)">
+                    <input class="searchbox-user" v-model="searcheduser" placeholder="Search user" @keyup.enter="searchUser">
                     <div v-if="users.length>0" class="searched-dropdown">
                         <ul>
                             <li v-for="user in users" :key="user.username" @click="openChatFromUser(user)">
@@ -576,7 +578,7 @@
                 </div>
                 <div v-if="chats.length>0" class="chats-dropdown" ref="chatlist">
                     <ul>
-                        <li v-for="chat in chats" :key="chat.userid" @click="buildMainChat(chat.chatid)">
+                        <li v-for="chat in chats" :key="chat.chatid" @click="buildMainChat(chat.chatid)">
                             <div class="chatpreview">
                                 <div class="chatpreviewname">
                                     <img class="img-circular" :src="chat.groupphoto" style="width: 32px; height: 32px;">
@@ -1037,7 +1039,7 @@ body {
     .chats-dropdown {
         width: 100%;
         height: calc(100% - 36px); /* minus height of buttons */
-        overflow-y: scroll;
+        overflow-y: auto;
     }
     .chats-dropdown ul {
         list-style: none;

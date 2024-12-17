@@ -392,7 +392,7 @@ func (db *appdbimpl) GetChat(chatid int, userid int) (components.Chat, error){
 
 	defer usersrows.Close()
 
-	//cicle for all the users
+	// cicle for all the users
 	for usersrows.Next(){
 		var username string
 		err = usersrows.Scan(&username)

@@ -7,8 +7,8 @@ export default {}
 
 <template>
 	<div class="container-fluid">
-			<RouterView />
-		</div>
+		<RouterView />
+	</div>
 </template>
 
 <style>
