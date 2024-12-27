@@ -43,8 +43,8 @@ func (rt *_router) createChat(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 
-	// check if the message is empty
-	if len(chat.FirstMessage.Text) == 0 && len(chat.FirstMessage.Photo) == 0 {
+	// check if is a chat that the message is empty
+	if len(chat.GroupName) == 0 && len(chat.FirstMessage.Text) == 0 && len(chat.FirstMessage.Photo) == 0 {
 		http.Error(w, database.ErrMessageEmpty.Error(), http.StatusBadRequest) // 400
 		return
 	}
@@ -346,7 +346,15 @@ func (rt *_router) getMyConversations(w http.ResponseWriter, r *http.Request, ps
 
 	// order the chats based on timestamp of the last message
 	sort.Slice(chats, func(i, j int) bool {
-		return chats[i].LastMessage.TimeStamp > chats[j].LastMessage.TimeStamp
+		if chats[i].LastMessage.MessageId != 0 && chats[j].LastMessage.MessageId != 0 {
+			return chats[i].LastMessage.TimeStamp > chats[j].LastMessage.TimeStamp
+		} else if chats[i].LastMessage.MessageId == 0 && chats[j].LastMessage.MessageId != 0 {
+			return chats[i].TimeCreated > chats[j].LastMessage.TimeStamp
+		} else if chats[i].LastMessage.MessageId != 0 && chats[j].LastMessage.MessageId == 0 {
+			return chats[i].LastMessage.TimeStamp > chats[j].TimeCreated
+		} else {
+			return chats[i].TimeCreated > chats[j].TimeCreated
+		}
 	})
 
 	// sets the LastAccess fr the user

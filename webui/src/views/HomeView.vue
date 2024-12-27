@@ -154,6 +154,7 @@
                             chat.lastmessage.username="You";
                         }
                         chat.lastmessage.timestamp = chat.lastmessage.timestamp.slice(11,16);
+                        chat.timecreated = chat.timecreated.slice(11,16);
                         this.chats.push(chat);
                     });
                 } catch (e) {
@@ -228,19 +229,6 @@
                 if(this.mainchat.chatid==-1){
                     try {
                         let response = await this.$axios.post("/newchat",{usernamelist:[this.username,this.mainchat.groupname],firstmessage:{text:this.messagetext, photo:this.messagephoto}},{headers:{"Authorization": `Bearer ${this.userid}`}});
-                        this.messagetext = null;
-                        this.messagephoto = null;
-                        this.buildMainChat(response.data.chatid);
-                    } catch (e) {
-                        this.errormsg = e.response.status + ": " + e.response.data;
-                    }
-                }else if(this.mainchat.chatid==-2){
-                    try {
-                        const userslist = [this.username];
-                        this.userscreategroup.forEach( user =>{
-                            userslist.push(user);
-                        });
-                        let response = await this.$axios.post("/newchat",{usernamelist:userslist, groupname: this.mainchat.groupname, groupphoto: this.mainchat.groupphoto, firstmessage:{text:this.messagetext, photo:this.messagephoto}},{headers:{"Authorization": `Bearer ${this.userid}`}});
                         this.messagetext = null;
                         this.messagephoto = null;
                         this.buildMainChat(response.data.chatid);
@@ -415,18 +403,24 @@
                 this.boxshown = 0;
                 this.errormsg = null;
             },
-            async createGroupTemp(){
+            async createGroup(){
                 // default photo
 	            const default_photo = "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCg0KPCFET0NUWVBFIHN2ZyBQVUJMSUMgIi0vL1czQy8vRFREIFNWRyAxLjEvL0VOIiAiaHR0cDovL3d3dy53My5vcmcvR3JhcGhpY3MvU1ZHLzEuMS9EVEQvc3ZnMTEuZHRkIj4NCjwhLS0gVXBsb2FkZWQgdG86IFNWRyBSZXBvLCB3d3cuc3ZncmVwby5jb20sIEdlbmVyYXRvcjogU1ZHIFJlcG8gTWl4ZXIgVG9vbHMgLS0+CjxzdmcgZmlsbD0iIzAwMDAwMCIgdmVyc2lvbj0iMS4xIiBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgDQoJIHdpZHRoPSI4MDBweCIgaGVpZ2h0PSI4MDBweCIgdmlld0JveD0iNzk2IDc5NiAyMDAgMjAwIiBlbmFibGUtYmFja2dyb3VuZD0ibmV3IDc5NiA3OTYgMjAwIDIwMCIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+DQo8cGF0aCBkPSJNODk2LDc5NmMtNTUuMTQsMC05OS45OTksNDQuODYtOTkuOTk5LDEwMGMwLDU1LjE0MSw0NC44NTksMTAwLDk5Ljk5OSwxMDBjNTUuMTQxLDAsOTkuOTk5LTQ0Ljg1OSw5OS45OTktMTAwDQoJQzk5NS45OTksODQwLjg2LDk1MS4xNDEsNzk2LDg5Niw3OTZ6IE04OTYuNjM5LDgyNy40MjVjMjAuNTM4LDAsMzcuMTg5LDE5LjY2LDM3LjE4OSw0My45MjFjMCwyNC4yNTctMTYuNjUxLDQzLjkyNC0zNy4xODksNDMuOTI0DQoJcy0zNy4xODctMTkuNjY3LTM3LjE4Ny00My45MjRDODU5LjQ1Miw4NDcuMDg1LDg3Ni4xMDEsODI3LjQyNSw4OTYuNjM5LDgyNy40MjV6IE04OTYsOTgzLjg2DQoJYy0yNC42OTIsMC00Ny4wMzgtMTAuMjM5LTYzLjAxNi0yNi42OTVjLTIuMjY2LTIuMzM1LTIuOTg0LTUuNzc1LTEuODQtOC44MmM1LjQ3LTE0LjU1NiwxNS43MTgtMjYuNzYyLDI4LjgxNy0zNC43NjENCgljMi44MjgtMS43MjgsNi40NDktMS4zOTMsOC45MSwwLjgyOGM3LjcwNiw2Ljk1OCwxNy4zMTYsMTEuMTE0LDI3Ljc2NywxMS4xMTRjMTAuMjQ5LDAsMTkuNjktNC4wMDEsMjcuMzE4LTEwLjcxOQ0KCWMyLjQ4OC0yLjE5MSw2LjEyOC0yLjQ3OSw4LjkzMi0wLjcxMWMxMi42OTcsOC4wMDQsMjIuNjE4LDIwLjAwNSwyNy45NjcsMzQuMjUzYzEuMTQ0LDMuMDQ3LDAuNDI1LDYuNDgyLTEuODQyLDguODE3DQoJQzk0My4wMzcsOTczLjYyMSw5MjAuNjkxLDk4My44Niw4OTYsOTgzLjg2eiIvPg0KPC9zdmc+"
-                this.mainchat={
-                        chatid:-2,
-                        groupname:this.createdgroupname,
-                        groupphoto:this.createdgroupphoto,
-                        isgroup: true,
-                        messagelist:[]
-                    }
+                
                 if(!this.createdgroupphoto){
-                    this.mainchat.groupphoto = default_photo;
+                    this.createdgroupphoto = default_photo;
+                }
+                try {
+                    const userslist = [this.username];
+                    this.userscreategroup.forEach( user =>{
+                        userslist.push(user);
+                    });
+                    let response = await this.$axios.post("/newchat",{usernamelist:userslist, groupname: this.createdgroupname, groupphoto: this.createdgroupphoto},{headers:{"Authorization": `Bearer ${this.userid}`}});
+                    this.createdgroupname = null;
+                    this.createdgroupphoto = null;
+                    this.buildMainChat(response.data.chatid);
+                } catch (e) {
+                    this.errormsg = e.response.status + ": " + e.response.data;
                 }
                 this.chatshown = true;
                 this.boxshown = 0;
@@ -503,7 +497,11 @@
                     this.errormsg = e.response.status + ": " + e.response.data;;
                 }
             },
-
+            async logout(){
+                this.$router.push({
+                    path: "/"
+                });
+            },
 
             // function to refresh the views
             async refresh(){
@@ -562,6 +560,11 @@
                     </div>
                 </div>
             </div>
+            <!-- Logout button -->
+            <button class="leavebutton" @click="logout">
+                <img src="/assets/leave.svg" style="height: 32px; width: 32px;">
+                Log Out
+            </button>
         </div>
 
 
@@ -583,15 +586,19 @@
                                 <div class="chatpreviewname">
                                     <img class="img-circular" :src="chat.groupphoto" style="width: 32px; height: 32px;">
                                     <h4 style="margin-left: 10px; margin-bottom: 0;">{{chat.groupname}}</h4>
-                                    <div class="timepreview">{{chat.lastmessage.timestamp}}</div>
+                                    <div v-if="chat.lastmessage.messageid!=0" class="timepreview">{{chat.lastmessage.timestamp}}</div>
+                                    <div v-else class="timepreview">{{chat.timecreated}}</div>
                                 </div>
-                                <div class="messagepreview">
+                                <div class="messagepreview" v-if="chat.lastmessage.messageid!=0">
                                     <b>{{chat.lastmessage.username}}: </b>
                                     <img v-if="chat.lastmessage.photo.length>0" src="/assets/photo-icon.svg" style="height: 24px; width: 24px; margin-left: 5px;">
                                     &nbsp;{{chat.lastmessage.text}}
                                     <img class="checkmark" v-if="chat.lastmessage.isallread && chat.lastmessage.userid==this.userid" src="/assets/double-check-blue.svg" style="height: 24px; width: 24px;">
                                     <img class="checkmark" v-else-if="chat.lastmessage.isallreceived && chat.lastmessage.userid==this.userid" src="/assets/double-check.svg" style="height: 24px; width: 24px;">
                                     <img class="checkmark" v-else-if="chat.lastmessage.userid==this.userid" src="/assets/single-check.svg" style="height: 24px; width: 24px;">
+                                </div>
+                                <div class="messagepreview" v-else>
+                                    <b>Group created </b>
                                 </div>
                             </div>
                         </li>
@@ -605,7 +612,7 @@
                 <div class="topbar-chat">
                     <img class="backarrow" src="/assets/back-arrow.svg" style="width: 32px; height: 32px; cursor: pointer;" @click="closeMainChat"/>
                     <div class="user-info">
-                        <img class="img-circular":src="mainchat.groupphoto" style="width: 32px; height: 32px; margin-left: 2px;"/>
+                        <img class="img-circular" :src="mainchat.groupphoto" style="width: 32px; height: 32px; margin-left: 2px;"/>
                         <h3 style="margin-left: 10px; margin-bottom: 0; margin-right: 10px;">{{mainchat.groupname}}</h3>
                         <img v-if="mainchat.isgroup && boxshown != 2" src="/assets/pencil.svg" style="width: 16px; height: 16px; cursor: pointer; margin-right: 10px;" @click="boxshown = 2"/>
                     </div>
@@ -801,7 +808,7 @@
                     </li>
                 </ul>
             </div>
-            <button v-if="userscreategroup.size>=1" class="confirm-button" @click="createGroupTemp">Confirm</button>
+            <button v-if="userscreategroup.size>=1" class="confirm-button" @click="createGroup">Confirm</button>
             <button class="cancel-button" @click="boxshown = 3">Back</button>
             <ErrorMsg v-if="errormsg" :msg="errormsg"></ErrorMsg>
         </div>

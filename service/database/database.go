@@ -100,6 +100,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 				ChatId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 				ChatName TEXT,
 				ChatPhoto TEXT,
+				TimeCreated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				CHECK ((ChatName IS NULL AND ChatPhoto IS NULL) OR (ChatName IS NOT NULL AND ChatPhoto IS NOT NULL))
 				);`
 

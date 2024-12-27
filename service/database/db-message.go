@@ -79,14 +79,20 @@ func (db *appdbimpl) DeleteMessage(messageid int, chatid int) error {
 		return err
 	}
 
-	// if the aren't other message in the chat, the chat is deleted
+	// check if the chat is a group
+	isgroup, err := db.IsGroup(chatid)
+	if err != nil {
+		return err
+	}
+
+	// if the aren't other message and is a chat, the chat is deleted
 	var n_messages int
 	err = db.c.QueryRow(`SELECT COUNT(*) FROM Message WHERE ChatId=?`, chatid).Scan(&n_messages)
 	if err != nil {
 		return err
 	}
 
-	if n_messages == 0 {
+	if n_messages == 0 && !isgroup {
 		_, err = db.c.Exec(`DELETE FROM Chat WHERE ChatId=?`, chatid)
 		if err != nil {
 			return err

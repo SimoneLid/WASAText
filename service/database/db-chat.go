@@ -84,6 +84,16 @@ func (db *appdbimpl) InsertChat(chat components.ChatCreation, userperformingid i
 		return 0, 0, ErrUserNotInChat
 	}
 
+	// if is a group commit the transaction
+	if len(chat.GroupName) != 0 {
+		err = tx.Commit()
+		if err != nil {
+			return 0, 0, ErrTransaction
+		}
+
+		return chatid, 0, err
+	}
+
 	// check if there is a text in message
 	var text sql.NullString
 	text.Valid = true
@@ -248,11 +258,10 @@ func (db *appdbimpl) GetUserChats(userid int) ([]components.ChatPreview, error) 
 
 	chats := []components.ChatPreview{}
 
-	// search all the groups where the user is with the last message
-	rowsgroup, err := db.c.Query(`SELECT c.ChatId, c.ChatName, c.ChatPhoto, m.MessageId, m.ChatId, m.UserId, u.Username, m.Text, m.Photo, m.Timestamp
-	FROM ChatUser cu JOIN Chat c ON cu.ChatId = c.ChatId JOIN Message m ON m.ChatId = c.ChatId JOIN User u ON u.UserId = m.UserId 
-	WHERE cu.UserId = ? AND c.ChatName IS NOT NULL
-    AND m.Timestamp = (SELECT MAX(Timestamp) FROM Message WHERE ChatId = c.ChatId)`, userid)
+	// search all the groups where the user is
+	rowsgroup, err := db.c.Query(`SELECT c.ChatId, c.ChatName, c.ChatPhoto, c.TimeCreated
+	FROM ChatUser cu JOIN Chat c ON cu.ChatId = c.ChatId 
+	WHERE cu.UserId = ? AND c.ChatName IS NOT NULL`, userid)
 	if err != nil {
 		return chats, err
 	}
@@ -263,30 +272,43 @@ func (db *appdbimpl) GetUserChats(userid int) ([]components.ChatPreview, error) 
 	for rowsgroup.Next() {
 
 		var currentchat components.ChatPreview
+		err = rowsgroup.Scan(&currentchat.ChatId, &currentchat.GroupName, &currentchat.GroupPhoto, &currentchat.TimeCreated)
+		if err != nil {
+			return chats, err
+		}
+
+		// takes the last message of the chat
 		var text sql.NullString
 		var photo sql.NullString
-		err = rowsgroup.Scan(&currentchat.ChatId, &currentchat.GroupName, &currentchat.GroupPhoto, &currentchat.LastMessage.MessageId, &currentchat.LastMessage.ChatId, &currentchat.LastMessage.UserId, &currentchat.LastMessage.Username, &text, &photo, &currentchat.LastMessage.TimeStamp)
-		if err != nil {
-			return chats, err
-		}
+		err = db.c.QueryRow(`SELECT m.MessageId, m.ChatId, m.UserId, u.Username, m.Text, m.Photo, m.TimeStamp
+		FROM Message m JOIN User u ON m.UserId = u.UserId
+		WHERE m.ChatId = ? AND 
+		m.MessageId = (SELECT MessageId FROM Message WHERE ChatId = m.ChatId ORDER BY Timestamp DESC, MessageId DESC LIMIT 1)`, currentchat.ChatId).Scan(&currentchat.LastMessage.MessageId, &currentchat.LastMessage.ChatId, &currentchat.LastMessage.UserId, &currentchat.LastMessage.Username, &text, &photo, &currentchat.LastMessage.TimeStamp)
 
-		// check if text and photo of the message are not null
-		if text.Valid {
-			currentchat.LastMessage.Text = text.String
-		}
-		if photo.Valid {
-			currentchat.LastMessage.Photo = photo.String
-		}
+		// if the last message exists
+		if err == nil {
 
-		// check if the message is received by all the users in the chat
-		currentchat.LastMessage.IsAllReceived, err = db.IsAllReceived(currentchat.LastMessage.MessageId, userid)
-		if err != nil {
-			return chats, err
-		}
+			// check if text and photo of the message are not null
+			if text.Valid {
+				currentchat.LastMessage.Text = text.String
+			}
+			if photo.Valid {
+				currentchat.LastMessage.Photo = photo.String
+			}
 
-		// check if the message is read by all the users in the chat
-		currentchat.LastMessage.IsAllRead, err = db.IsAllRead(currentchat.LastMessage.MessageId, userid)
-		if err != nil {
+			// check if the message is received by all the users in the chat
+			var err2 error
+			currentchat.LastMessage.IsAllReceived, err2 = db.IsAllReceived(currentchat.LastMessage.MessageId, userid)
+			if err2 != nil {
+				return chats, err2
+			}
+
+			// check if the message is read by all the users in the chat
+			currentchat.LastMessage.IsAllRead, err2 = db.IsAllRead(currentchat.LastMessage.MessageId, userid)
+			if err2 != nil {
+				return chats, err2
+			}
+		} else if !errors.Is(err, sql.ErrNoRows) {
 			return chats, err
 		}
 
@@ -298,7 +320,7 @@ func (db *appdbimpl) GetUserChats(userid int) ([]components.ChatPreview, error) 
 	}
 
 	// search all the chats where the user is with the last message, setting the name and photo equal to the other user of the chat
-	rowschat, err := db.c.Query(`SELECT c.ChatId, u.Username, u.Photo, m.MessageId, m.ChatId, m.UserId, u2.Username, m.Text, m.Photo, m.Timestamp
+	rowschat, err := db.c.Query(`SELECT c.ChatId, u.Username, u.Photo, c.TimeCreated, m.MessageId, m.ChatId, m.UserId, u2.Username, m.Text, m.Photo, m.Timestamp
 	FROM ChatUser cu JOIN Chat c ON cu.ChatId = c.ChatId JOIN Message m ON m.ChatId = c.ChatId JOIN ChatUser cu2 ON cu2.ChatId=cu.ChatId JOIN User u ON cu2.UserId = u.UserId JOIN User u2 ON u2.UserId = m.UserId
 	WHERE cu.UserId = ? AND c.ChatName IS NULL AND u.UserId<>cu.UserId
 	AND m.MessageId = (SELECT MessageId FROM Message WHERE ChatId = c.ChatId ORDER BY Timestamp DESC, MessageId DESC LIMIT 1)`, userid)
@@ -313,7 +335,7 @@ func (db *appdbimpl) GetUserChats(userid int) ([]components.ChatPreview, error) 
 		var currentchat components.ChatPreview
 		var text sql.NullString
 		var photo sql.NullString
-		err = rowschat.Scan(&currentchat.ChatId, &currentchat.GroupName, &currentchat.GroupPhoto, &currentchat.LastMessage.MessageId, &currentchat.LastMessage.ChatId, &currentchat.LastMessage.UserId, &currentchat.LastMessage.Username, &text, &photo, &currentchat.LastMessage.TimeStamp)
+		err = rowschat.Scan(&currentchat.ChatId, &currentchat.GroupName, &currentchat.GroupPhoto, &currentchat.TimeCreated, &currentchat.LastMessage.MessageId, &currentchat.LastMessage.ChatId, &currentchat.LastMessage.UserId, &currentchat.LastMessage.Username, &text, &photo, &currentchat.LastMessage.TimeStamp)
 		if err != nil {
 			return chats, err
 		}
@@ -361,11 +383,11 @@ func (db *appdbimpl) GetChat(chatid int, userid int) (components.Chat, error) {
 
 	// if the chat is a group takes the info, if not the name and group are equal to the other user of the chat
 	if isgroup {
-		err = db.c.QueryRow(`SELECT * FROM Chat WHERE ChatId=?`, chatid).Scan(&chat.ChatId, &chat.GroupName, &chat.GroupPhoto)
+		err = db.c.QueryRow(`SELECT * FROM Chat WHERE ChatId=?`, chatid).Scan(&chat.ChatId, &chat.GroupName, &chat.GroupPhoto, &chat.TimeCreated)
 	} else {
-		err = db.c.QueryRow(`SELECT c.ChatId, u.Username, u.Photo 
+		err = db.c.QueryRow(`SELECT c.ChatId, u.Username, u.Photo, c.TimeCreated 
 		FROM Chat c JOIN ChatUser cu ON c.ChatId=cu.ChatId JOIN User u ON cu.UserId=u.UserId
-		WHERE c.ChatId=? AND u.UserId<>?`, chatid, userid).Scan(&chat.ChatId, &chat.GroupName, &chat.GroupPhoto)
+		WHERE c.ChatId=? AND u.UserId<>?`, chatid, userid).Scan(&chat.ChatId, &chat.GroupName, &chat.GroupPhoto, &chat.TimeCreated)
 	}
 
 	if err != nil {
@@ -395,6 +417,8 @@ func (db *appdbimpl) GetChat(chatid int, userid int) (components.Chat, error) {
 	if usersrows.Err() != nil {
 		return chat, err
 	}
+
+	chat.MessageList = []components.Message{}
 
 	// gets all the message in the chat
 	messagerows, err := db.c.Query(`SELECT m.MessageId,m.ChatId,m.UserId,u.Username,m.Text,m.Photo,m.IsForwarded,m.Timestamp

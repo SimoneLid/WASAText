@@ -37,6 +37,7 @@ type Chat struct {
 	ChatId       int       `json:"chatid"`
 	GroupName    string    `json:"groupname"`
 	GroupPhoto   string    `json:"groupphoto"`
+	TimeCreated  string    `json:"timecreated"`
 	IsGroup      bool      `json:"isgroup"`
 	UsernameList []string  `json:"usernamelist"`
 	MessageList  []Message `json:"messagelist"`
@@ -53,6 +54,7 @@ type ChatPreview struct {
 	ChatId      int            `json:"chatid"`
 	GroupName   string         `json:"groupname"`
 	GroupPhoto  string         `json:"groupphoto"`
+	TimeCreated string         `json:"timecreated"`
 	LastMessage MessagePreview `json:"lastmessage"`
 }
 
