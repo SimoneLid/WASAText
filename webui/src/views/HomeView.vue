@@ -277,7 +277,7 @@
             async deleteMessage(message){
                 try{
                     let response = await this.$axios.delete("/chats/"+this.mainchat.chatid+"/messages/"+message.messageid,{headers:{"Authorization": `Bearer ${this.userid}`}});
-                    if(this.mainchat.messagelist.length>1){
+                    if(this.mainchat.messagelist.length>1 || this.mainchat.isgroup){
                         this.buildMainChat(message.chatid);
                     }else{
                         this.mainchat = null;
