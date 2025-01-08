@@ -424,6 +424,7 @@
                 }
                 this.chatshown = true;
                 this.boxshown = 0;
+                this.userscreategroup = new Set();
             },
             async getAllUsers() {
                 this.errormsg = null;
@@ -481,6 +482,7 @@
                     this.errormsg = e.response.status + ": " + e.response.data;
                 }
                 this.boxshown = 0;
+                this.userstoadd = new Set();
             },
             async getUsersNotInChat() {
                 console.log("vai")
@@ -657,7 +659,7 @@
                                                 </div>
                                         </div>
                                         <div v-if="commentshown==message.messageid" class="messagebox-comment">
-                                            <input class="commenttext" v-model="commentemoji" maxlength="2" placeholder="Emoji" @keyup.enter="commentMessage(message)">
+                                            <input class="commenttext" v-model="commentemoji" maxlength="2" placeholder="Emoji" @input="commentMessage(message)">
                                             <div class="commentlist">
                                                 <ul>
                                                     <li v-for="comment in message.commentlist" :key="comment.userid">
@@ -690,10 +692,10 @@
                                             <img src="/assets/comment.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="showComments(message)">
                                             {{message.commentlist.length}}
                                             </div>
-                                            <img src="/assets/forward.svg" style="height: 24px; width: 24px;">
+                                            <img src="/assets/forward.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="startForwardingMessage(message.messageid)" id="forwardbutton">
                                         </div>
                                         <div v-if="commentshown==message.messageid" class="messagebox-comment">
-                                            <input class="commenttext" v-model="commentemoji" maxlength="2" placeholder="Emoji" @keyup.enter="commentMessage(message)">
+                                            <input class="commenttext" v-model="commentemoji" maxlength="2" placeholder="Emoji" @input="commentMessage(message)">
                                             <div class="commentlist">
                                                 <ul>
                                                     <li v-for="comment in message.commentlist" :key="comment.userid">
@@ -719,7 +721,7 @@
                     </div>
                     <img v-if="messagetext || messagephoto" src="/assets/send.svg" style="width: 32px; height: 32px; cursor: pointer; margin-left: 10px; margin-right: 10px;" @click="sendMessageorCreateChat">
                     <div v-if="messagephoto" class="messagephoto-preview">
-                        <img :src="messagephoto" style="width: 250px; height: 250px;">
+                        <img :src="messagephoto" style="max-width: 250px; max-height: 250px; margin: 25px;">
                     </div>
                 </div>
             </div>
@@ -814,7 +816,7 @@
         </div>
     </div>
 
-    <!-- Box to add people when creating a group -->
+    <!-- Box to add people to a group -->
     <div class="box-container" v-if="boxshown == 5">
         <div class="blurred-box">
             <h1 style="margin-top: 20px;">Add to group</h1>
@@ -1281,8 +1283,6 @@ body {
     .messagephoto-preview{
         position: absolute;
         top: 0%;
-        height: 300px;
-        width: 300px;
         transform: translateY(-100%);
         background-color: rgb(39, 35, 35);
         border-top-right-radius: 20px;
