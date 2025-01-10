@@ -16,7 +16,7 @@
                 /*  1 = change profile
                     2 = change group
                     3 = create group name and photo
-                    4 = create group selec users
+                    4 = create group select users
                     5 = add users to group
                 */
 
@@ -33,7 +33,6 @@
                 chatshown: false,
                 messagetext: null,
                 messagephoto: null,
-                n_messageshown: 0,
 
                 // for comments
                 commentshown: 0,
@@ -133,6 +132,7 @@
                 if (this.changedinfo){
                     this.boxshown = 0;
                     this.errormsg = null;
+                    this.changedinfo = false;
                 }
             },
             async buildChatPreview(){
@@ -293,8 +293,10 @@
                 }else{
                     this.commentshown=0;
                 }
+                this.errormsg = null;
             },
             async commentMessage(message){
+                this.errormsg = null;
                 const emojiRegex = /[\u{1F600}-\u{1F64F}|\u{1F300}-\u{1F5FF}|\u{1F680}-\u{1F6FF}|\u{1F700}-\u{1F77F}|\u{1F780}-\u{1F7FF}|\u{1F800}-\u{1F8FF}|\u{1F900}-\u{1F9FF}|\u{1FA00}-\u{1FA6F}|\u{2600}-\u{26FF}|\u{2700}-\u{27BF}|\u{FE00}-\u{FE0F}]/gu;
                 if(emojiRegex.test(this.commentemoji)){
                     try{
@@ -303,7 +305,8 @@
                     } catch (e) {
                         this.errormsg = e.response.status + ": " + e.response.data;
                     }
-                    
+                }else{
+                    this.errormsg = "the comment must consist of a single emoji";
                 }
                 this.commentemoji = null;
             },
@@ -526,12 +529,11 @@
             document.addEventListener('click', this.handleClickOutside);
             this.buildChatPreview();
         },
-        /* Updater to check if the messagelist is shown and make the lit start from bottom */
+        /* Updater to check if the messagelist is shown and make the list start from bottom */
         updated(){
             const div = document.querySelector('#messagelist');
-            if (div && this.n_messageshown!=this.mainchat.messagelist.length) {
+            if (div) {
                 div.scrollTop=div.scrollHeight;
-                this.n_messageshown=this.mainchat.messagelist.length;
             }
         }
     }
@@ -660,6 +662,7 @@
                                         </div>
                                         <div v-if="commentshown==message.messageid" class="messagebox-comment">
                                             <input class="commenttext" v-model="commentemoji" maxlength="2" placeholder="Emoji" @input="commentMessage(message)">
+                                            <ErrorMsg v-if="errormsg" :msg="errormsg" style="word-break: break-word; width: 200px;"></ErrorMsg>
                                             <div class="commentlist">
                                                 <ul>
                                                     <li v-for="comment in message.commentlist" :key="comment.userid">
@@ -696,6 +699,7 @@
                                         </div>
                                         <div v-if="commentshown==message.messageid" class="messagebox-comment">
                                             <input class="commenttext" v-model="commentemoji" maxlength="2" placeholder="Emoji" @input="commentMessage(message)">
+                                            <ErrorMsg v-if="errormsg" :msg="errormsg"></ErrorMsg>
                                             <div class="commentlist">
                                                 <ul>
                                                     <li v-for="comment in message.commentlist" :key="comment.userid">
@@ -1121,7 +1125,7 @@ body {
     }
     .leavebutton{
         position: absolute;
-        left: 91%;
+        right: 25px;
         background-color: transparent;
         color: whitesmoke;
         width: 120px;
@@ -1209,7 +1213,8 @@ body {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        width: 120px;
+        min-width: 120px;
+        width: calc(100% - 30px);
         margin-bottom: 5px;
         margin-left: 15px;
         margin-right: 15px;
@@ -1230,7 +1235,7 @@ body {
     }
     .commentlist{
         width: 100%;
-        overflow-y: scroll;
+        overflow-y: auto;
         display: flex;
         flex-direction: column;
         max-height: 150px;
