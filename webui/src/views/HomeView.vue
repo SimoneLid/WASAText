@@ -40,6 +40,8 @@
 
                 // for forwarding message
                 messageToforward: 0,
+                textToforward:null,
+                photoToforward:null,
 
                 // for changing group name and photo
                 changedgroupinfo: false,
@@ -54,7 +56,10 @@
 
                 // for adding users to a group
                 usersnotinchat: [],
-                userstoadd: new Set()
+                userstoadd: new Set(),
+
+                // to refresh every n seconds
+                intervalid: null
             }
         },
         methods: {
@@ -64,8 +69,13 @@
                     this.users = [];
                     this.searcheduser = null;
                 }
-                if (this.messageToforward!=0 && event.target.id != "forwardbutton" && !this.$refs.chatlist.contains(event.target)){
+                // Check if the click is outside the sidebar when forwarding a message
+                if (this.messageToforward!=0 && event.target.id != "forwardbutton" && !this.$refs?.chatlist.contains(event.target)){
                     this.messageToforward = 0;
+                    this.textToforward = null;
+                    this.photoToforward = null;
+                    this.refresh();
+                    this.intervalid=setInterval(this.refresh,5000);
                 }
             },
             async searchUser(searcheduser) {
@@ -164,9 +174,28 @@
             },
             async buildMainChat(chatid){
                 this.errormsg = null;
-                this.mainchat = null;
                 if(this.messageToforward != 0){
-                    this.forwardMessage(chatid);
+                    if(chatid>=0){
+                        this.forwardMessage(chatid);
+                    }else{
+                        await this.getAllUsers();
+                        var name;
+                        this.allusers.forEach(user =>{
+                            if(user.userid==-chatid){
+                                name=user.username;
+                            }
+                        });
+                        try {
+                            let response = await this.$axios.post("/newchat",{usernamelist:[this.username,name],firstmessage:{text:this.textToforward, photo:this.photoToforward}},{headers:{"Authorization": `Bearer ${this.userid}`}});
+                            this.messageToforward = 0;
+                            this.textToforward = null;
+                            this.photoToforward = null;
+                            this.buildMainChat(response.data.chatid);
+                        } catch (e) {
+                            this.errormsg = e.response.status + ": " + e.response.data;
+                        }
+                    }
+                    this.intervalid=setInterval(this.refresh,5000);
                 }else{
                     try {
                         let response = await this.$axios.get("/chats/"+chatid,{headers:{"Authorization": `Bearer ${this.userid}`}});
@@ -189,7 +218,6 @@
                 this.mainchat = null;
                 this.messagephoto = null;
                 this.messagetext = null;
-                this.n_messageshown = 0;
                 this.commentshown = 0;
                 this.commentemoji = null;
                 this.chatshown = false;
@@ -245,6 +273,8 @@
                 try {
                     let response = await this.$axios.post("/chats/"+chatid+"/forwardedmessages",{messageid: this.messageToforward},{headers:{"Authorization": `Bearer ${this.userid}`}});
                     this.messageToforward = 0;
+                    this.textToforward = null;
+                    this.photoToforward = null;
                     this.buildMainChat(chatid);
                 } catch (e) {
                     this.errormsg = e.response.status + ": " + e.response.data;
@@ -318,9 +348,26 @@
                     this.errormsg = e.response.status + ": " + e.response.data;
                 }
             },
-            async startForwardingMessage(messageid){
-                this.messageToforward = messageid;
-                console.log(this.messageToforward);
+            async startForwardingMessage(message){
+                clearInterval(this.intervalid);
+                this.intervalid = null;
+                console.log(this.intervalid);
+                this.messageToforward = message.messageid;
+                this.textToforward = message.text;
+                this.photoToforward = message.photo;
+                await this.getAllUsers();
+                this.allusers.forEach(user =>{
+                    var found = false;
+                    for(var i=0;i<this.chats.length;i++){
+                        if(user.username==this.chats[i].groupname && !this.chats[i].isgroup){
+                            found = true;
+                            break;
+                        }
+                    }
+                    if(!found){
+                        this.chats.push({chatid:-user.userid,groupname:user.username,groupphoto:user.photo});
+                    }
+                });
             },
             async leaveGroup(){
                 try{
@@ -488,7 +535,6 @@
                 this.userstoadd = new Set();
             },
             async getUsersNotInChat() {
-                console.log("vai")
                 this.errormsg = null;
                 this.usersnotinchat=[];
                 try {
@@ -510,11 +556,9 @@
 
             // function to refresh the views
             async refresh(){
-                this.createdgroupname = null;
-                this.createdgroupphoto = null;
-                this.userscreategroup = [];
                 this.messageToforward = 0;
-                this.n_messageshown = 0;
+                this.textToforward = null;
+                this.photoToforward = null;
                 if(this.mainchat){
                     this.buildMainChat(this.mainchat.chatid);
                 }else{
@@ -526,8 +570,13 @@
 
         },
         mounted(){
+            this.refresh();
             document.addEventListener('click', this.handleClickOutside);
-            this.buildChatPreview();
+            this.intervalid=setInterval(this.refresh,5000);
+        },
+        beforeUnmount(){
+            clearInterval(this.intervalid);
+            this.intervalid = null;
         },
         /* Updater to check if the messagelist is shown and make the list start from bottom */
         updated(){
@@ -590,10 +639,12 @@
                                 <div class="chatpreviewname">
                                     <img class="img-circular" :src="chat.groupphoto" style="width: 32px; height: 32px;">
                                     <h4 style="margin-left: 10px; margin-bottom: 0;">{{chat.groupname}}</h4>
-                                    <div v-if="chat.lastmessage.messageid!=0" class="timepreview">{{chat.lastmessage.timestamp}}</div>
+                                    <div v-if="chat.chatid<0"></div>
+                                    <div v-else-if="chat.lastmessage.messageid!=0" class="timepreview">{{chat.lastmessage.timestamp}}</div>
                                     <div v-else class="timepreview">{{chat.timecreated}}</div>
                                 </div>
-                                <div class="messagepreview" v-if="chat.lastmessage.messageid!=0">
+                                <div v-if="chat.chatid<0"></div>
+                                <div class="messagepreview" v-else-if="chat.lastmessage.messageid!=0">
                                     <b>{{chat.lastmessage.username}}: </b>
                                     <img v-if="chat.lastmessage.photo.length>0" src="/assets/photo-icon.svg" style="height: 24px; width: 24px; margin-left: 5px;">
                                     &nbsp;{{chat.lastmessage.text}}
@@ -653,7 +704,7 @@
                                             {{message.timestamp}}
                                         </div>
                                         <div class="messagebox-buttons">
-                                            <img src="/assets/forward.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="startForwardingMessage(message.messageid)" id="forwardbutton">
+                                            <img src="/assets/forward.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="startForwardingMessage(message)" id="forwardbutton">
                                             <img src="/assets/trashcan.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="deleteMessage(message)">
                                             <div>
                                                 <img src="/assets/comment.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="showComments(message)">
@@ -695,7 +746,7 @@
                                             <img src="/assets/comment.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="showComments(message)">
                                             {{message.commentlist.length}}
                                             </div>
-                                            <img src="/assets/forward.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="startForwardingMessage(message.messageid)" id="forwardbutton">
+                                            <img src="/assets/forward.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="startForwardingMessage(message)" id="forwardbutton">
                                         </div>
                                         <div v-if="commentshown==message.messageid" class="messagebox-comment">
                                             <input class="commenttext" v-model="commentemoji" maxlength="2" placeholder="Emoji" @input="commentMessage(message)">
