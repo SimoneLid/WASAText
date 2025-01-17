@@ -95,7 +95,7 @@ func (db *appdbimpl) InsertChat(chat components.ChatCreation, userperformingid i
 	}
 
 	// if the first message is forwarded, take the info of the message to forward
-	if(chat.ForwardedId!=0){
+	if chat.ForwardedId != 0 {
 		chat.FirstMessage.Text, chat.FirstMessage.Photo, err = db.GetMessage(chat.ForwardedId)
 		if err != nil {
 			errtx := tx.Rollback()
@@ -105,7 +105,6 @@ func (db *appdbimpl) InsertChat(chat components.ChatCreation, userperformingid i
 			return 0, 0, err
 		}
 	}
-
 
 	// check if there is a text in message
 	var text sql.NullString
@@ -127,7 +126,7 @@ func (db *appdbimpl) InsertChat(chat components.ChatCreation, userperformingid i
 
 	// set the isForwarded flag
 	isforwarded := false
-	if(chat.ForwardedId!=0){
+	if chat.ForwardedId != 0 {
 		isforwarded = true
 	}
 
