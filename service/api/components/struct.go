@@ -48,6 +48,7 @@ type ChatCreation struct {
 	GroupName    string        `json:"groupname"`
 	GroupPhoto   string        `json:"groupphoto"`
 	FirstMessage MessageToSend `json:"firstmessage"`
+	ForwardedId int `json:"forwardedid"`
 }
 
 type ChatPreview struct {

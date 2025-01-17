@@ -94,6 +94,19 @@ func (db *appdbimpl) InsertChat(chat components.ChatCreation, userperformingid i
 		return chatid, 0, err
 	}
 
+	// if the first message is forwarded, take the info of the message to forward
+	if(chat.ForwardedId!=0){
+		chat.FirstMessage.Text, chat.FirstMessage.Photo, err = db.GetMessage(chat.ForwardedId)
+		if err != nil {
+			errtx := tx.Rollback()
+			if errtx != nil {
+				return 0, 0, ErrTransaction
+			}
+			return 0, 0, err
+		}
+	}
+
+
 	// check if there is a text in message
 	var text sql.NullString
 	text.Valid = true
@@ -112,9 +125,15 @@ func (db *appdbimpl) InsertChat(chat components.ChatCreation, userperformingid i
 		photo.String = chat.FirstMessage.Photo
 	}
 
+	// set the isForwarded flag
+	isforwarded := false
+	if(chat.ForwardedId!=0){
+		isforwarded = true
+	}
+
 	// insert the first message
 	var messageid int
-	err = tx.QueryRow("INSERT INTO Message(ChatId,UserId,Text,Photo,IsForwarded) VALUES(?,?,?,?,false) RETURNING MessageId", chatid, userperformingid, text, photo).Scan(&messageid)
+	err = tx.QueryRow("INSERT INTO Message(ChatId,UserId,Text,Photo,IsForwarded) VALUES(?,?,?,?,?) RETURNING MessageId", chatid, userperformingid, text, photo, isforwarded).Scan(&messageid)
 	if err != nil {
 		errtx := tx.Rollback()
 		if errtx != nil {

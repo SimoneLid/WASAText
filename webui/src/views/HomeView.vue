@@ -40,8 +40,6 @@
 
                 // for forwarding message
                 messageToforward: 0,
-                textToforward:null,
-                photoToforward:null,
 
                 // for changing group name and photo
                 changedgroupinfo: false,
@@ -72,8 +70,6 @@
                 // Check if the click is outside the sidebar when forwarding a message
                 if (this.messageToforward!=0 && event.target.id != "forwardbutton" && !this.$refs?.chatlist.contains(event.target)){
                     this.messageToforward = 0;
-                    this.textToforward = null;
-                    this.photoToforward = null;
                     this.refresh();
                     this.intervalid=setInterval(this.refresh,5000);
                 }
@@ -186,10 +182,8 @@
                             }
                         });
                         try {
-                            let response = await this.$axios.post("/newchat",{usernamelist:[this.username,name],firstmessage:{text:this.textToforward, photo:this.photoToforward}},{headers:{"Authorization": `Bearer ${this.userid}`}});
+                            let response = await this.$axios.post("/newchat",{usernamelist:[this.username,name], forwardedid: this.messageToforward},{headers:{"Authorization": `Bearer ${this.userid}`}});
                             this.messageToforward = 0;
-                            this.textToforward = null;
-                            this.photoToforward = null;
                             this.buildMainChat(response.data.chatid);
                         } catch (e) {
                             this.errormsg = e.response.status + ": " + e.response.data;
@@ -273,8 +267,6 @@
                 try {
                     let response = await this.$axios.post("/chats/"+chatid+"/forwardedmessages",{messageid: this.messageToforward},{headers:{"Authorization": `Bearer ${this.userid}`}});
                     this.messageToforward = 0;
-                    this.textToforward = null;
-                    this.photoToforward = null;
                     this.buildMainChat(chatid);
                 } catch (e) {
                     this.errormsg = e.response.status + ": " + e.response.data;
@@ -351,10 +343,7 @@
             async startForwardingMessage(message){
                 clearInterval(this.intervalid);
                 this.intervalid = null;
-                console.log(this.intervalid);
                 this.messageToforward = message.messageid;
-                this.textToforward = message.text;
-                this.photoToforward = message.photo;
                 await this.getAllUsers();
                 this.allusers.forEach(user =>{
                     var found = false;
@@ -557,8 +546,6 @@
             // function to refresh the views
             async refresh(){
                 this.messageToforward = 0;
-                this.textToforward = null;
-                this.photoToforward = null;
                 if(this.mainchat){
                     this.buildMainChat(this.mainchat.chatid);
                 }else{

@@ -43,8 +43,8 @@ func (rt *_router) createChat(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 
-	// check if is a chat that the message is empty
-	if len(chat.GroupName) == 0 && len(chat.FirstMessage.Text) == 0 && len(chat.FirstMessage.Photo) == 0 {
+	// check if is a chat and the message is not empty, unless is forwarded
+	if len(chat.GroupName) == 0 && len(chat.FirstMessage.Text) == 0 && len(chat.FirstMessage.Photo) == 0 && chat.ForwardedId==0{
 		http.Error(w, database.ErrMessageEmpty.Error(), http.StatusBadRequest) // 400
 		return
 	}
