@@ -437,6 +437,40 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "404": {$ref: "#/components/responses/NotFound"}
         "500": {$ref: "#/components/responses/InternalServerError"}
+
+  /chats/{chat_id}/repliedmessages:
+    parameters:
+    - $ref: "#/components/parameters/ChatId"
+    post:
+      security:
+        - bearerAuth: []
+      tags: ["message"]
+      summary: replay to a message in the chat
+      description: |-
+        The user performing the action replay to a message in the chat
+        associated with chat_id
+      operationId: replyMessage
+      requestBody:
+        description: |-
+          message to reply to the other message
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/MessageReply"}
+      responses:
+        "201":
+          description: Replayed to message succesfully
+          content:
+            application/json:
+              schema:
+                type: object
+                description: id of the new message created
+                properties: 
+                  messageid: {$ref: "#/components/schemas/MessageId"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/InternalServerError"}
     
     
   /chats/{chat_id}/messages/{message_id}:
@@ -691,6 +725,15 @@ components:
       description: info to create a new message
       type: object
       properties:
+        text: {$ref: "#/components/schemas/TextData"}
+        photo: {$ref: "#/components/schemas/Photo"}
+
+    MessageReply:
+      title: messagereply
+      description: info to create a new message that is a reply
+      type: object
+      properties:
+        replyId: {$ref: "#/components/schemas/MessageId"}
         text: {$ref: "#/components/schemas/TextData"}
         photo: {$ref: "#/components/schemas/Photo"}
 

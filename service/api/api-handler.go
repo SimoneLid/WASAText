@@ -26,6 +26,7 @@ func (rt *_router) Handler() http.Handler {
 	// Message routes
 	rt.router.POST("/chats/:chat_id/messages", rt.wrap(rt.sendMessage))
 	rt.router.POST("/chats/:chat_id/forwardedmessages", rt.wrap(rt.forwardMessage))
+	rt.router.POST("/chats/:chat_id/repliedmessages", rt.wrap(rt.replyMessage))
 	rt.router.DELETE("/chats/:chat_id/messages/:message_id", rt.wrap(rt.deleteMessage))
 
 	// Comment routes

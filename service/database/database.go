@@ -111,10 +111,12 @@ func New(db *sql.DB) (AppDatabase, error) {
 					Text TEXT,
 					Photo TEXT,
 					IsForwarded BOOLEAN NOT NULL,
+					RepliedId INTEGER,
 					TimeStamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 					CHECK (Text IS NOT NULL OR Photo IS NOT NULL),
 					FOREIGN KEY(ChatId) REFERENCES Chat(ChatId) ON DELETE CASCADE,
-					FOREIGN KEY(UserId) REFERENCES User(UserId)
+					FOREIGN KEY(UserId) REFERENCES User(UserId),
+					FOREIGN KEY(RepliedId) REFERENCES Message(MessageId)
 					);`
 
 	Comment := `CREATE TABLE IF NOT EXISTS Comment(

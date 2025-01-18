@@ -64,6 +64,7 @@ type MessageId struct {
 }
 
 type MessageToSend struct {
+	ReplyId int `json:"replyid"`
 	Text  string `json:"text"`
 	Photo string `json:"photo"`
 }
@@ -92,6 +93,7 @@ type Message struct {
 	IsAllReceived bool      `json:"isallreceived"`
 	IsAllRead     bool      `json:"isallread"`
 	CommentList   []Comment `json:"commentlist"`
+	ReplyMessage  MessagePreview   `json:"replymessage"`
 }
 
 type Comment struct {

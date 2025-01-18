@@ -207,3 +207,57 @@ func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request, ps http
 	// set the header of the response
 	w.WriteHeader(http.StatusNoContent) // 204
 }
+
+
+// post /chats/{chat_id}/repliedmessages
+func (rt *_router) replyMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
+
+	// take the user performing the action from the bearer
+	userperformingid, err := strconv.Atoi(r.Header.Get("Authorization")[7:])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
+		return
+	}
+
+	// take the message from the request body
+	var reply components.MessageToSend
+	err = json.NewDecoder(r.Body).Decode(&reply)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
+		return
+	}
+
+	// take the chat id from the URL
+	chatid, err := strconv.Atoi(ps.ByName("chat_id"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
+		return
+	}
+
+	// check if the user performing the action is in the chat
+	userinchat, err := rt.db.IsUserInChat(chatid, userperformingid)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError) // 500
+		return
+	}
+	if !userinchat {
+		http.Error(w, database.ErrUserNotInChat.Error(), http.StatusUnauthorized) // 401
+		return
+	}
+
+	// Inserts the message in the database
+	var newmessageid int
+	newmessageid, err = rt.db.InsertMessage(reply, false, chatid, userperformingid)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
+		return
+	}
+
+	var id components.MessageId
+	id.MessageId = newmessageid
+
+	// set the header of the response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated) // 201
+	_ = json.NewEncoder(w).Encode(id)
+}

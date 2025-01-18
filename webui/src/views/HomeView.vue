@@ -56,6 +56,12 @@
                 usersnotinchat: [],
                 userstoadd: new Set(),
 
+                // for replying to message
+                replyid: null,
+                replyuser: null,
+                replytext: null,
+                replyphoto: null,
+
                 // to refresh every n seconds
                 intervalid: null
             }
@@ -215,6 +221,10 @@
                 this.commentshown = 0;
                 this.commentemoji = null;
                 this.chatshown = false;
+                this.replyid = null;
+                this.replyphoto = null;
+                this.replytext = null;
+                this.replyuser = null;
             },
 
             // button to send a photo handler
@@ -231,15 +241,26 @@
             sendPhotoButton(){
                 this.$refs.sendPhotoInput.click();
             },
-
             async sendMessage(){
-                try {
-                    let response = await this.$axios.post("/chats/"+this.mainchat.chatid+"/messages",{text: this.messagetext,photo: this.messagephoto},{headers:{"Authorization": `Bearer ${this.userid}`}});
-                    this.messagetext = null;
-                    this.messagephoto = null;
-                    this.buildMainChat(this.mainchat.chatid);
-                } catch (e) {
-                    this.errormsg = e.response.status + ": " + e.response.data;
+                if(this.replyid){
+                    try{
+                        let response = await this.$axios.post("/chats/"+this.mainchat.chatid+"/repliedmessages",{text: this.messagetext,photo: this.messagephoto, replyid:this.replyid},{headers:{"Authorization": `Bearer ${this.userid}`}});
+                        this.messagetext = null;
+                        this.messagephoto = null;
+                        this.resetReplyMessage();
+                        this.buildMainChat(this.mainchat.chatid);
+                    }catch (e) {
+                        this.errormsg = e.response.status + ": " + e.response.data;
+                    }
+                }else{
+                    try {
+                        let response = await this.$axios.post("/chats/"+this.mainchat.chatid+"/messages",{text: this.messagetext,photo: this.messagephoto},{headers:{"Authorization": `Bearer ${this.userid}`}});
+                        this.messagetext = null;
+                        this.messagephoto = null;
+                        this.buildMainChat(this.mainchat.chatid);
+                    } catch (e) {
+                        this.errormsg = e.response.status + ": " + e.response.data;
+                    }
                 }
             },
 
@@ -537,6 +558,18 @@
                     this.errormsg = e.response.status + ": " + e.response.data;;
                 }
             },
+            async setReplyMessage(message){
+                this.replyid=message.messageid;
+                this.replyuser=message.username;
+                this.replytext=message.text;
+                this.replyphoto=message.photo;
+            },
+            async resetReplyMessage(){
+                this.replyid=null;
+                this.replyuser=null;
+                this.replytext=null;
+                this.replyphoto=null;
+            },
             async logout(){
                 this.$router.push({
                     path: "/"
@@ -680,6 +713,16 @@
                                         <div class="messagebox-username" style="text-align: right;">
                                             <b><h3 style="margin-bottom: 0;">You</h3></b>
                                         </div>
+                                        <div v-if="message.replymessage.messageid!=0" style="display: flex; flex-direction: column; margin-left: 15px; margin-right: 15px; background-color: #695d5d; width: calc(100% - 30px); align-items: end;">
+                                            <div v-if="message.replymessage.username==this.username">
+                                                <h5 style="margin-bottom: 0; margin-right: 10px;">You</h5>
+                                            </div>
+                                            <div v-else>
+                                                <h5 style="margin-bottom: 0; margin-right: 10px;">{{message.replymessage.username}}</h5>
+                                            </div>
+                                            <img v-if="message.replymessage.photo" :src="message.replymessage.photo" style="max-width: 100px; max-height: 100px; margin: 10px;">
+                                            <div style="margin-right: 10px; word-break: break-word;">{{message.replymessage.text}}</div>
+                                        </div>
                                         <img v-if="message.photo" :src="message.photo" style="max-width: 200px; max-height: 200px; margin: 10px;">
                                         <div class="messagebox-text">
                                             {{message.text}}
@@ -691,6 +734,7 @@
                                             {{message.timestamp}}
                                         </div>
                                         <div class="messagebox-buttons">
+                                            <img src="/assets/reply.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="setReplyMessage(message)">
                                             <img src="/assets/forward.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="startForwardingMessage(message)" id="forwardbutton">
                                             <img src="/assets/trashcan.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="deleteMessage(message)">
                                             <div>
@@ -721,6 +765,16 @@
                                         <div class="messagebox-username">
                                             <b><h3 style="margin-bottom: 0;">{{message.username}}</h3></b>
                                         </div>
+                                        <div v-if="message.replymessage.messageid!=0" style="display: flex; flex-direction: column; margin-left: 15px; margin-right: 15px; background-color: #695d5d; width: calc(100% - 30px);">
+                                            <div v-if="message.replymessage.username==this.username">
+                                                <h5 style="margin-bottom: 0; margin-left: 10px;">You</h5>
+                                            </div>
+                                            <div v-else>
+                                                <h5 style="margin-bottom: 0; margin-left: 10px;">{{message.replymessage.username}}</h5>
+                                            </div>
+                                            <img v-if="message.replymessage.photo" :src="message.replymessage.photo" style="max-width: 100px; max-height: 100px; margin: 10px;">
+                                            <div style="margin-left: 10px; word-break: break-word;">{{message.replymessage.text}}</div>
+                                        </div>
                                         <img v-if="message.photo" :src="message.photo" style="max-width: 200px; max-height: 200px; margin: 10px;">
                                         <div class="messagebox-text">
                                             {{message.text}}
@@ -734,6 +788,7 @@
                                             {{message.commentlist.length}}
                                             </div>
                                             <img src="/assets/forward.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="startForwardingMessage(message)" id="forwardbutton">
+                                            <img src="/assets/reply.svg" style="height: 24px; width: 24px; cursor: pointer;" @click="setReplyMessage(message)">
                                         </div>
                                         <div v-if="commentshown==message.messageid" class="messagebox-comment">
                                             <input class="commenttext" v-model="commentemoji" maxlength="2" placeholder="Emoji" @input="commentMessage(message)">
@@ -762,8 +817,21 @@
                         <input class="message-textbox" v-model="messagetext" placeholder="Write a message" @keyup.enter="sendMessageorCreateChat">
                     </div>
                     <img v-if="messagetext || messagephoto" src="/assets/send.svg" style="width: 32px; height: 32px; cursor: pointer; margin-left: 10px; margin-right: 10px;" @click="sendMessageorCreateChat">
-                    <div v-if="messagephoto" class="messagephoto-preview">
-                        <img :src="messagephoto" style="max-width: 250px; max-height: 250px; margin: 25px;">
+                    <div v-if="messagephoto || replyid" class="messagephoto-preview">
+                        <div v-if="replyid" style="color: whitesmoke; margin: 25px; background-color: #695d5d;">
+                            <div class="replyname" style="display: flex; justify-content: space-between; align-items: center;">
+                                <div v-if="this.replyuser==this.username">
+                                    <h3 style="margin: 0; margin-left: 10px;">You</h3>
+                                </div>
+                                <div v-else>
+                                    <h3 style="margin: 0; margin-left: 10px;">{{replyuser}}</h3>
+                                </div>
+                                <img src="/assets/cross.svg" style="width: 24px; height: 24px; cursor: pointer; margin-left: 10px; margin-right: 10px;" @click="resetReplyMessage()">
+                            </div>
+                            <img v-if="replyphoto" :src="replyphoto" style="margin: 10px; max-height: 100px;">
+                            <div v-if="replytext" style="margin-left: 10px;">{{replytext}}</div>
+                        </div>
+                        <img v-if="messagephoto" :src="messagephoto" style="max-width: 250px; max-height: 250px; margin: 25px;">
                     </div>
                 </div>
             </div>
@@ -1251,7 +1319,7 @@ body {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        min-width: 120px;
+        min-width: 150px;
         width: calc(100% - 30px);
         margin-bottom: 5px;
         margin-left: 15px;
@@ -1330,7 +1398,7 @@ body {
         background-color: rgb(39, 35, 35);
         border-top-right-radius: 20px;
         display: flex;
-        align-items: center;
+        flex-direction: column;
         justify-content: center;
     }
 

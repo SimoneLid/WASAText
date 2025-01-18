@@ -27,8 +27,18 @@ func (db *appdbimpl) InsertMessage(message components.MessageToSend, isforwarded
 		photo.String = message.Photo
 	}
 
+	// check if the message is a reply
+	var replyid sql.NullInt32
+	replyid.Valid = true
+	if message.ReplyId == 0 {
+		replyid.Valid = false
+	} else {
+		replyid.Int32 = int32(message.ReplyId)
+	}
+
+
 	var messageid int
-	err := db.c.QueryRow(`INSERT INTO Message(ChatId,UserId,Text,Photo, IsForwarded) VALUES(?,?,?,?,?) RETURNING MessageId`, chatid, userperformingid, text, photo, isforwarded).Scan(&messageid)
+	err := db.c.QueryRow(`INSERT INTO Message(ChatId,UserId,Text,Photo,IsForwarded,RepliedId) VALUES(?,?,?,?,?,?) RETURNING MessageId`, chatid, userperformingid, text, photo, isforwarded, replyid).Scan(&messageid)
 	if err != nil {
 		return 0, err
 	}
@@ -74,7 +84,14 @@ func (db *appdbimpl) IsMessageInChat(chatid int, messageid int) (bool, error) {
 
 func (db *appdbimpl) DeleteMessage(messageid int, chatid int) error {
 
-	_, err := db.c.Exec(`DELETE FROM Message WHERE MessageId=? AND ChatId=?`, messageid, chatid)
+	// set to NULL the RepliedId on all the message that replayed to this
+	_, err := db.c.Exec(`UPDATE Message SET RepliedId=NULL WHERE RepliedId=?`, messageid)
+	if err != nil {
+		return err
+	}
+
+
+	_, err = db.c.Exec(`DELETE FROM Message WHERE MessageId=?`, messageid, chatid)
 	if err != nil {
 		return err
 	}

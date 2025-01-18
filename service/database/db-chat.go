@@ -477,6 +477,34 @@ func (db *appdbimpl) GetChat(chatid int, userid int) (components.Chat, error) {
 			return chat, err
 		}
 
+		// check if the message is a reply to another message
+		var replyid sql.NullInt32
+		err = db.c.QueryRow(`SELECT RepliedId FROM Message WHERE MessageId=?`,message.MessageId).Scan(&replyid)
+		if err != nil {
+			return chat, err
+		}
+
+		if replyid.Valid{
+			message.ReplyMessage = components.MessagePreview{}
+			var replytext sql.NullString
+			var replyphoto sql.NullString
+			err = db.c.QueryRow(`SELECT m.MessageId,m.ChatId,m.UserId,u.Username,m.Text,m.Photo,m.Timestamp
+						FROM Message m JOIN User u ON m.UserId = u.UserId
+						WHERE MessageId=?`, replyid).Scan(&message.ReplyMessage.MessageId, &message.ReplyMessage.ChatId, &message.ReplyMessage.UserId, &message.ReplyMessage.Username, &replytext, &replyphoto, &message.ReplyMessage.TimeStamp)
+			if err != nil {
+				return chat, err
+			}
+	
+			if replytext.Valid {
+				message.ReplyMessage.Text = replytext.String
+			}
+			if replyphoto.Valid {
+				message.ReplyMessage.Photo = replyphoto.String
+			}
+			
+		}
+
+
 		message.CommentList = []components.Comment{}
 		// gets all the comment of the message
 		commentrows, err := db.c.Query(`SELECT c.MessageId, c.UserId, c.Emoji, u.Username
