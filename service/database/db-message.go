@@ -36,7 +36,6 @@ func (db *appdbimpl) InsertMessage(message components.MessageToSend, isforwarded
 		replyid.Int32 = int32(message.ReplyId)
 	}
 
-
 	var messageid int
 	err := db.c.QueryRow(`INSERT INTO Message(ChatId,UserId,Text,Photo,IsForwarded,RepliedId) VALUES(?,?,?,?,?,?) RETURNING MessageId`, chatid, userperformingid, text, photo, isforwarded, replyid).Scan(&messageid)
 	if err != nil {
@@ -89,7 +88,6 @@ func (db *appdbimpl) DeleteMessage(messageid int, chatid int) error {
 	if err != nil {
 		return err
 	}
-
 
 	_, err = db.c.Exec(`DELETE FROM Message WHERE MessageId=?`, messageid, chatid)
 	if err != nil {

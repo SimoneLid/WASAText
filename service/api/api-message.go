@@ -208,7 +208,6 @@ func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request, ps http
 	w.WriteHeader(http.StatusNoContent) // 204
 }
 
-
 // post /chats/{chat_id}/repliedmessages
 func (rt *_router) replyMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
 

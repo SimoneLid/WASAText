@@ -64,9 +64,9 @@ type MessageId struct {
 }
 
 type MessageToSend struct {
-	ReplyId int `json:"replyid"`
-	Text  string `json:"text"`
-	Photo string `json:"photo"`
+	ReplyId int    `json:"replyid"`
+	Text    string `json:"text"`
+	Photo   string `json:"photo"`
 }
 
 type MessagePreview struct {
@@ -82,18 +82,18 @@ type MessagePreview struct {
 }
 
 type Message struct {
-	MessageId     int       `json:"messageid"`
-	ChatId        int       `json:"chatid"`
-	UserId        int       `json:"userid"`
-	Username      string    `json:"username"`
-	Text          string    `json:"text"`
-	Photo         string    `json:"photo"`
-	IsForwarded   bool      `json:"isforwarded"`
-	TimeStamp     string    `json:"timestamp"`
-	IsAllReceived bool      `json:"isallreceived"`
-	IsAllRead     bool      `json:"isallread"`
-	CommentList   []Comment `json:"commentlist"`
-	ReplyMessage  MessagePreview   `json:"replymessage"`
+	MessageId     int            `json:"messageid"`
+	ChatId        int            `json:"chatid"`
+	UserId        int            `json:"userid"`
+	Username      string         `json:"username"`
+	Text          string         `json:"text"`
+	Photo         string         `json:"photo"`
+	IsForwarded   bool           `json:"isforwarded"`
+	TimeStamp     string         `json:"timestamp"`
+	IsAllReceived bool           `json:"isallreceived"`
+	IsAllRead     bool           `json:"isallread"`
+	CommentList   []Comment      `json:"commentlist"`
+	ReplyMessage  MessagePreview `json:"replymessage"`
 }
 
 type Comment struct {
